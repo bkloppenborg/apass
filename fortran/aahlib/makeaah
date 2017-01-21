@@ -1,0 +1,14 @@
+gfortran  -c  bell.f
+gfortran  -c  disply.f
+gfortran  -c  extrd.f
+gfortran  -c  getfilt.f
+gfortran  -c  helcor.f
+gfortran  -c  jday.f
+gfortran  -c  lin.f
+gfortran  -c  nblank.f
+gfortran  -c  openit.f
+gfortran  -c  prompt.f
+gfortran  -c  rdnames.f
+gfortran  -c  solve2.f
+gfortran  -c  ucase.f
+gfortran  -c  wrtnames.f
