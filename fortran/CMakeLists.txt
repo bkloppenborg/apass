@@ -13,6 +13,12 @@ add_executable(hphot hphot.f)
 add_executable(filepp filepp.f)
 target_link_libraries(filstat aah)
 
+# Filtran requires several additional libraries for which there are not
+# CMake find scripts. Rather than write find scripts, we'll just link
+# to them directly from here
+set(libplotsub "/1/local/lib/libplotsub.a" FILEPATH "Full path to libplotsub.a")
+set(libdevices "/1/local/lib/libdevices.a" FILEPATH "Full path to libdevices.a")
+set(libutils "/1/local/lib/libutils.a" FILEPATH "Full path to libutils.a")
 #add_executable(filtran filtran.f)
 #target_link_libraries(filtran aah)
 
