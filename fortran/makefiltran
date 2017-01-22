@@ -1,0 +1,3 @@
+gfortran -o filtran filtran.f /raid/aavsonet/sources/aahlib/liba.a \
+-lplotsub -ldevices -lutils -lsla_f -L/usr/local/lib \
+-L/usr/X11R6/lib -lX11
