@@ -16,9 +16,9 @@ target_link_libraries(filstat aah)
 # Filtran requires several additional libraries for which there are not
 # CMake find scripts. Rather than write find scripts, we'll just link
 # to them directly from here
-set(PLOTSUB_LIBRARIES "/1/local/lib/libplotsub.a" FILEPATH "Full path to libplotsub.a")
-set(DEVICES_LIBRARIES "/1/local/lib/libdevices.a" FILEPATH "Full path to libdevices.a")
-set(UTIILS_LIBRARIES "/1/local/lib/libutils.a" FILEPATH "Full path to libutils.a")
+set(PLOTSUB_LIBRARIES "/1/local/lib/libplotsub.a" CACHE FILEPATH "Full path to libplotsub.a")
+set(DEVICES_LIBRARIES "/1/local/lib/libdevices.a" CACHE FILEPATH "Full path to libdevices.a")
+set(UTIILS_LIBRARIES  "/1/local/lib/libutils.a"   CACHE FILEPATH "Full path to libutils.a")
 add_executable(filtran filtran.f)
 target_link_libraries(filtran aah ${PLOTSUB_LIBRARIES} ${DEVICES_LIBRARIES} ${UTILS_LIBRARIES})
 
