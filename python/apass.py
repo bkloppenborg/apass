@@ -1,5 +1,7 @@
 #!/bin/python
 
+import numpy as np
+
 # FRED files have the following format:
 ## STANDARD MAGNITUDES ONLY
 ## FILCON ver 3.0
@@ -8,3 +10,11 @@
 
 apass_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'avexx', 'kset', 'group', 'star', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night']
 apass_col_types = ['float64', 'float64', 'float32', 'float32', 'bool', 'bool', 'float32', 'float32', 'int32', 'int32', 'int32', 'uint8', 'float32', 'float32', 'float32', 'int32', 'int32']
+
+def read_fred(filename):
+    dtype={'names': apass_col_names,'formats': apass_col_types}
+    return np.loadtxt(filename, dtype=dtype)
+
+def read_fredbin(filename):
+    dtype={'names': apass_col_names,'formats': apass_col_types}
+    return np.fromfile(filename, dtype)

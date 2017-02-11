@@ -10,7 +10,6 @@ from math import pi
 
 # Custom modules
 sys.path.append(os.path.abspath('./modules/FileLock/filelock'))
-print(sys.path)
 from filelock import FileLock
 
 from quadtree import *
@@ -29,9 +28,9 @@ class FileStore():
         # obtain a lock or keep retrying for 60 seconds
         self.lock = FileLock(self.filename, timeout=60, delay=0.05)
         self.lock.acquire()
-        self.file = open(self.filename, 'ab')
+        self.file = open(self.filename, 'a+')
 
-    def write(self, data):
+    def append(self, data):
         self.file.write(data)
 
 class FileStores():
@@ -44,7 +43,7 @@ class FileStores():
         for id, filestore in self.files.iteritems():
             filestore.close()
 
-    def get_filestore(self, file_id):
+    def get_filehandle(self, file_id):
 
         if file_id not in self.files:
             filename = self.datapath + "/" + str(file_id).zfill(5) + ".dat"
@@ -55,8 +54,8 @@ class FileStores():
         return self.files[file_id]
 
     def insert(self, file_id, data):
-        zone_file = self.get_filestore(file_id)
-        zone_file.write(data)
+        filehandle = self.get_filehandle(file_id)
+        filehandle.append(data)
 
 
 class FileStoreLeaf(Node):
@@ -70,10 +69,6 @@ class FileStoreLeaf(Node):
             global fileid
             self.file_id = fileid
             fileid += 1
-
-        dRA = rect.x_max - rect.x_min
-        dDEC = rect.y_max - rect.y_min
-        print("Size: dRA = " + str(dRA) + " dDEC = " + str(dDEC))
 
     def insert(self, x, y, data):
         """Inserts the data into the corresponding file"""
@@ -149,7 +144,7 @@ def main():
     dtype={'names': apass_col_names,'formats': apass_col_types}
     for filename in args.input:
         print("Reading FRED file " + filename)
-        data = np.loadtxt(filename, dtype=dtype)
+        data = read_fred(filename)
         print("Finished Reading FRED")
 
         for datum in np.nditer(data):
