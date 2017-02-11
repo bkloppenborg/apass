@@ -145,7 +145,6 @@ def main():
     tree = QuadTree(bounds)
     tree.build_tree(depth, leafClass=FileStoreLeaf)
     tree.runFunc(merge_polar_zones)
-    tree.save()
 
     dtype={'names': apass_col_names,'formats': apass_col_types}
     for filename in args.input:
