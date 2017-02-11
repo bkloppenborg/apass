@@ -31,10 +31,12 @@ class Rect():
         return False
 
     def overlaps(self, other):
+        """Determines if two rectangles overlap"""
+        # implemented as "when do two rectangles NOT overlap?"
         if (other.y_max < self.y_min or
             other.x_max < self.x_min or
-            self.x_max < other.x_min or
-            self.y_max < other.y_min):
+            other.x_min > self.x_max or
+            other.y_min > self.y_max):
             return False
         return True
 
