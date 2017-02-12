@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from numpy import cos
 from math import pi
-import json
 
 # Custom modules
 sys.path.append(os.path.abspath('./modules/FileLock/filelock'))
@@ -101,19 +100,9 @@ def merge_polar_zones(node):
             node.children[i] = FileStoreLeaf(rect, child.depth, file_id=0, parent=node)
 
 def export_rect(node):
-
     if node.is_leaf():
         global rects
         rects.append(node.rect)
-
-def remove_parents(node):
-    node.parent = None
-
-def restore_parents(node):
-
-    for child in node.children:
-        child.parent = node
-
 
 def plot_zones(tree):
     tree.runFunc(export_rect)
@@ -156,19 +145,12 @@ def main():
     tree.split_until(depth, leafClass=FileStoreLeaf)
     tree.runFunc(merge_polar_zones)
 
-    # dump the tree to a JSON file
-    tree.runFunc(remove_parents)
-    json_str = json.dumps(tree, sort_keys=True, indent=2)
-    with open('/tmp/apass/global.json', 'w') as savefile:
-        savefile.write(json_str)
+    QuadTreeNode.to_file(tree, '/tmp/apass/global.json')
 
-    # restore the tree from a JSON file
-    json_data = json.loads(json_str)
-    pyobj = QuadTreeNode.from_dict(json_data, leafClass=FileStoreLeaf) # reconstitute
-    pyobj.runFunc(restore_parents)
+    temp = QuadTreeNode.from_file('/tmp/apass/global.json', leafClass=FileStoreLeaf)
 
     print tree.size()
-    print pyobj.size()
+    print temp.size()
 
     quit()
 

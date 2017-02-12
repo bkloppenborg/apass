@@ -1,5 +1,6 @@
 
 from functools import partial
+import json
 
 class Rect(dict):
     x_min = 0
@@ -90,6 +91,35 @@ class QuadTreeNode(dict):
 
         return node
 
+    @staticmethod
+    def to_json(tree):
+        """Serializes the quadtree tree to a JSON file."""
+
+        # Remove parents to avoid cyclic dependencies
+        tree.runFunc(remove_parent_from_children)
+        return json.dumps(tree, sort_keys=True, indent=2)
+
+    @staticmethod
+    def to_file(tree, filename):
+        json_str = QuadTreeNode.to_json(tree)
+        with open(filename, 'w+') as outfile:
+            outfile.write(json_str)
+
+    @staticmethod
+    def from_file(filename, leafClass=None):
+        json_str = open(filename).read()
+        return QuadTreeNode.from_json(json_str, leafClass=leafClass)
+
+    @staticmethod
+    def from_json(json_str, leafClass=None):
+        """Restores the quadtree from a JSON file."""
+
+        # restore the tree from a JSON file
+        json_data = json.loads(json_str)
+        tree = QuadTreeNode.from_dict(json_data, leafClass=leafClass) # reconstitute
+        tree.runFunc(restore_parent_to_children)
+        return tree
+
     def has_children(self):
         return len(self.children) > 0
 
@@ -139,3 +169,13 @@ class QuadTreeNode(dict):
             else:
                 self.children.append(leafClass(rect, self.depth + 1, parent=self))
 
+
+def remove_parent_from_children(node):
+    """Removes this node from being the parent of its children. Used in serialization."""
+    for child in node.children:
+        child.parent = None
+
+def restore_parent_to_children(node):
+    """Restores this node as the parent of its children. Used in de-serialization."""
+    for child in node.children:
+        child.parent = node
