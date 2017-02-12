@@ -58,11 +58,11 @@ class FileStores():
         filehandle.append(data)
 
 
-class FileStoreLeaf(Node):
+class FileStoreLeaf(QuadTreeNode):
     """Class for a QuadTree leaf that points to a file"""
 
     def __init__(self, rect, depth, file_id=None, parent=None):
-        Node.__init__(self, rect, depth, parent)
+        QuadTreeNode.__init__(self, rect, depth, parent)
 
         self.file_id = file_id;
         if self.file_id is None:
@@ -137,8 +137,8 @@ def main():
     #depth = 7 # dRA = 2.8125 dDEC = 1.40625
 
     bounds = Rect(0, 360, -90, 90)
-    tree = QuadTree(bounds)
-    tree.build_tree(depth, leafClass=FileStoreLeaf)
+    tree = QuadTreeNode(bounds, 0)
+    tree.split_until(depth, leafClass=FileStoreLeaf)
     tree.runFunc(merge_polar_zones)
 
     dtype={'names': apass_col_names,'formats': apass_col_types}

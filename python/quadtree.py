@@ -37,26 +37,7 @@ class Rect():
         return "[x_min: %f x_max: %f y_min: %f y_max: %f]" % \
             (self.x_min, self.x_max, self.y_min, self.y_max)
 
-class QuadTree():
-    root_node = None
-
-    def __init__(self, bounds):
-        self.root_node = Node(bounds, 0)
-
-    def build_tree(self, depth, leafClass=None):
-        self.root_node.split_until(depth, leafClass=leafClass)
-
-    def insert(self, x, y, datum):
-        self.root_node.insert(x, y, datum)
-
-    def runFunc(self, f):
-        """runs f(Node) at each node in the tree"""
-        self.root_node.runFunc(f)
-
-    def size(self):
-        return self.root_node.size()
-
-class Node():
+class QuadTreeNode():
 
     def __init__(self, rect, depth, parent=None):
         self.parent = parent
@@ -112,7 +93,7 @@ class Node():
         rects = self.rect.splitIntoQuads()
         for rect in rects:
             if leafClass == None:
-                self.children.append(Node(rect, self.depth + 1, parent=self))
+                self.children.append(QuadTreeNode(rect, self.depth + 1, parent=self))
             else:
                 self.children.append(leafClass(rect, self.depth + 1, parent=self))
 
