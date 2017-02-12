@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from numpy import cos
 from math import pi
+import json
 
 # Custom modules
 sys.path.append(os.path.abspath('./modules/FileLock/filelock'))
@@ -70,6 +71,11 @@ class FileStoreLeaf(QuadTreeNode):
             self.file_id = fileid
             fileid += 1
 
+    @staticmethod
+    def from_dict(rect, depth, dict_):
+        file_id = dict_['file_id']
+        return FileStoreLeaf(rect, depth, file_id=file_id)
+
     def insert(self, x, y, data):
         """Inserts the data into the corresponding file"""
         global filestores
@@ -99,6 +105,15 @@ def export_rect(node):
     if node.is_leaf():
         global rects
         rects.append(node.rect)
+
+def remove_parents(node):
+    node.parent = None
+
+def restore_parents(node):
+
+    for child in node.children:
+        child.parent = node
+
 
 def plot_zones(tree):
     tree.runFunc(export_rect)
@@ -140,6 +155,23 @@ def main():
     tree = QuadTreeNode(bounds, 0)
     tree.split_until(depth, leafClass=FileStoreLeaf)
     tree.runFunc(merge_polar_zones)
+
+    # dump the tree to a JSON file
+    tree.runFunc(remove_parents)
+    json_str = json.dumps(tree, sort_keys=True, indent=2)
+    with open('/tmp/apass/global.json', 'w') as savefile:
+        savefile.write(json_str)
+
+    # restore the tree from a JSON file
+    json_data = json.loads(json_str)
+    pyobj = QuadTreeNode.from_dict(json_data, leafClass=FileStoreLeaf) # reconstitute
+    pyobj.runFunc(restore_parents)
+
+    print tree.size()
+    print pyobj.size()
+
+    quit()
+
 
     dtype={'names': apass_col_names,'formats': apass_col_types}
     for filename in args.input:

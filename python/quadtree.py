@@ -1,15 +1,37 @@
 
-class Rect():
+from functools import partial
+
+class Rect(dict):
     x_min = 0
     x_max = 0
     y_min = 0
     y_max = 0
 
     def __init__(self, x_min, x_max, y_min, y_max):
+        dict.__init__(self)
+        self.__dict__ = self
         self.x_min = float(x_min)
         self.x_max = float(x_max)
         self.y_min = float(y_min)
         self.y_max = float(y_max)
+
+    def __repr__(self):
+        return "[x_min: %f x_max: %f y_min: %f y_max: %f]" % \
+            (self.x_min, self.x_max, self.y_min, self.y_max)
+
+    # this function should be abstracted and implemented elsewhere
+    def contains(self, x,y):
+        if x >= self.x_min and x < self.x_max and y >= self.y_min and y < self.y_max:
+            return True
+        return False
+
+    @staticmethod
+    def from_dict(dict_):
+        x_min = dict_['x_min']
+        x_max = dict_['x_max']
+        y_min = dict_['y_min']
+        y_max = dict_['y_max']
+        return Rect(x_min, x_max, y_min, y_max)
 
     def splitIntoQuads(self):
         output = []
@@ -27,19 +49,12 @@ class Rect():
 
         return output
 
-    # this function should be abstracted and implemented elsewhere
-    def contains(self, x,y):
-        if x >= self.x_min and x < self.x_max and y >= self.y_min and y < self.y_max:
-            return True
-        return False
-
-    def __repr__(self):
-        return "[x_min: %f x_max: %f y_min: %f y_max: %f]" % \
-            (self.x_min, self.x_max, self.y_min, self.y_max)
-
-class QuadTreeNode():
+class QuadTreeNode(dict):
 
     def __init__(self, rect, depth, parent=None):
+        # NOTE: If you add members here, update from_dict's num_keys value!
+        dict.__init__(self)
+        self.__dict__ = self
         self.parent = parent
         self.children = []
         self.rect = rect
@@ -53,6 +68,27 @@ class QuadTreeNode():
             return True
 
         return False
+
+    @staticmethod
+    def from_dict(dict_, leafClass=None):
+        # extract common data for every node
+        rect = Rect.from_dict(dict_['rect'])
+        depth = dict_['depth']
+        json_children = dict_['children']
+        parent = dict_['parent'] # always is none
+
+        node = None
+        num_keys = len(dict_.keys())
+        if num_keys == 4:
+            # standard QuadTree node
+            node = QuadTreeNode(rect, depth)
+            mapfunc = partial(QuadTreeNode.from_dict, leafClass=leafClass)
+            node.children = list(map(mapfunc, json_children))
+        else:
+            # specialized node, use leafClass's from_dict function
+            node = leafClass.from_dict(rect, depth, dict_)
+
+        return node
 
     def has_children(self):
         return len(self.children) > 0
@@ -88,6 +124,12 @@ class QuadTreeNode():
             for child in self.children:
                 child.split_until(depth, leafClass=leafClass)
 
+    def size(self):
+        size = 1
+        for child in self.children:
+            size += child.size()
+
+        return size
 
     def split(self, leafClass=None):
         rects = self.rect.splitIntoQuads()
