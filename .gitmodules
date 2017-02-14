@@ -1,3 +1,0 @@
-[submodule "python/modules/FileLock"]
-	path = python/modules/FileLock
-	url = https://github.com/dmfrey/FileLock.git

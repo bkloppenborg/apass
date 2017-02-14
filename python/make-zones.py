@@ -11,7 +11,7 @@ from quadtree_types import *
 
 def merge_polar_zones(node):
     """Replaces QuadTree nodes that reside completely within the polar zones
-    with a FileStoreLeaf node with fileid = [0=North,1=South]"""
+    with a IDLeaf node with fileid = [0=North,1=South]"""
 
     north = 80
     south = -1 * north
@@ -22,17 +22,19 @@ def merge_polar_zones(node):
 
         if rect.y_min == -90 and rect.y_max < south:
             rect = Rect(0, 360, -90, rect.y_max)
-            node.children[i] = FileStoreLeaf(rect, child.depth, file_id=1, parent=node)
+            node.children[i] = IDLeaf(rect, child.depth, node_id=1, parent=node)
         elif rect.y_max == 90 and rect.y_min > north:
             rect = Rect(0, 360, rect.y_min, 90)
-            node.children[i] = FileStoreLeaf(rect, child.depth, file_id=0, parent=node)
+            node.children[i] = IDLeaf(rect, child.depth, node_id=0, parent=node)
 
 def export_rect(node):
+    """Export leaf rectangles to the global rects variable"""
     if node.is_leaf():
         global rects
         rects.append(node.rect)
 
 def plot_zones(tree):
+    """Plots leaf zones found in the global rects variable"""
     tree.runFunc(export_rect)
 
     fig = plt.figure()
@@ -45,9 +47,8 @@ def plot_zones(tree):
         width = rect.x_max - rect.x_min
         height = rect.y_max -  rect.y_min
         axes.add_patch(patches.Rectangle((x,y), width, height, fill=False))
- 
-    plt.show()
 
+    plt.show()
 
 rects = [] # stores exported rectangles
 
@@ -60,23 +61,25 @@ def main():
 
     args = parser.parse_args()
 
-    global fileid
+    global fileid # used in quadtree_types.py
     fileid = 2 # reserve 0, 1 for the poles
 
     zonefile = '/tmp/apass/global.json'
 
-    # comes from command line
+    # subdivde the sphere to this depth:
     depth = 6 # dRA = 5.625 dDEC = 2.8125
     #depth = 7 # dRA = 2.8125 dDEC = 1.40625
 
+    # build the quadtree, then merge the zones
     bounds = Rect(0, 360, -90, 90)
     tree = QuadTreeNode(bounds, 0)
-    tree.split_until(depth, leafClass=FileStoreLeaf)
+    tree.split_until(depth, leafClass=IDLeaf)
     tree.runFunc(merge_polar_zones)
 
     if args.plot:
         plot_zones(tree)
 
+    # write the quadtree
     QuadTreeNode.to_file(tree, zonefile)
 
 if __name__ == "__main__":

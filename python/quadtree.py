@@ -3,6 +3,7 @@ from functools import partial
 import json
 
 class Rect(dict):
+    """A class which represents an axis-aligned rectangle"""
     x_min = 0
     x_max = 0
     y_min = 0
@@ -17,17 +18,20 @@ class Rect(dict):
         self.y_max = float(y_max)
 
     def __repr__(self):
+        """Return a string representation of the object"""
         return "[x_min: %f x_max: %f y_min: %f y_max: %f]" % \
             (self.x_min, self.x_max, self.y_min, self.y_max)
 
-    # this function should be abstracted and implemented elsewhere
     def contains(self, x,y):
+        """Determines if the point (x,y) resides within this rectangle.
+        The point must be (x,y) >= (x_min,y_min) and (x,y) < (x_max,y_max)"""
         if x >= self.x_min and x < self.x_max and y >= self.y_min and y < self.y_max:
             return True
         return False
 
     @staticmethod
     def from_dict(dict_):
+        """Restores a Rect from a dictionary"""
         x_min = dict_['x_min']
         x_max = dict_['x_max']
         y_min = dict_['y_min']
@@ -35,6 +39,7 @@ class Rect(dict):
         return Rect(x_min, x_max, y_min, y_max)
 
     def splitIntoQuads(self):
+        """Splits a rectangle into four quadrants"""
         output = []
         width =  self.x_max - self.x_min
         height = self.y_max - self.y_min
@@ -53,6 +58,11 @@ class Rect(dict):
 class QuadTreeNode(dict):
 
     def __init__(self, rect, depth, parent=None):
+        """A class representing a quadtree node.
+
+        rect -- the rectangle which this node contains
+        depth -- the depth of this node
+        parent -- this node's parent"""
         # NOTE: If you add members here, update from_dict's num_keys value!
         dict.__init__(self)
         self.__dict__ = self
@@ -62,16 +72,20 @@ class QuadTreeNode(dict):
         self.depth = depth
 
     def __repr__(self):
+        """Return a string representation of this object"""
         return "rect: %s, depth: %i" % (str(self.rect), self.depth)
 
     def contains(self, x, y):
-        if self.rect.contains(x,y):
-            return True
-
-        return False
+        """Determine if this node contains the point x,y"""
+        return self.rect.contains(x,y)
 
     @staticmethod
     def from_dict(dict_, leafClass=None):
+        """Restores a QuadTree node or subclass thereof
+
+        dict -- a dictionary containing this quadtree node's data
+        leafClass -- The class which will represent the leaves, must be a
+                     subclass of QuadTree"""
         # extract common data for every node
         rect = Rect.from_dict(dict_['rect'])
         depth = dict_['depth']
@@ -93,7 +107,7 @@ class QuadTreeNode(dict):
 
     @staticmethod
     def to_json(tree):
-        """Serializes the quadtree tree to a JSON file."""
+        """Serializes the quadtree tree to a JSON string"""
 
         # Remove parents to avoid cyclic dependencies
         tree.runFunc(remove_parent_from_children)
@@ -101,18 +115,24 @@ class QuadTreeNode(dict):
 
     @staticmethod
     def to_file(tree, filename):
+        """Serializes a quadtree to a JSON file"""
         json_str = QuadTreeNode.to_json(tree)
         with open(filename, 'w+') as outfile:
             outfile.write(json_str)
 
     @staticmethod
     def from_file(filename, leafClass=None):
+        """Restores a quadtree from a JSON File
+
+        filename -- the input JSON file
+        leafClass -- The class which will represent the leaves, must be a
+                     subclass of QuadTree"""
         json_str = open(filename).read()
         return QuadTreeNode.from_json(json_str, leafClass=leafClass)
 
     @staticmethod
     def from_json(json_str, leafClass=None):
-        """Restores the quadtree from a JSON file."""
+        """Restores the quadtree from a JSON string."""
 
         # restore the tree from a JSON file
         json_data = json.loads(json_str)
@@ -121,12 +141,17 @@ class QuadTreeNode(dict):
         return tree
 
     def has_children(self):
+        """Determines if this node has children"""
         return len(self.children) > 0
 
     def insert(self, x, y, datum):
+        """Inserts the specified data into the tree"""
         for child in self.children:
             if child.contains(x, y):
-                child.insert(x, y, datum)
+                return child.insert(x, y, datum)
+
+        # hopefully we never encounter this...
+        raise("Could not find a node containing the point (%i, %i)!" % (x,y))
 
     def is_leaf(self):
         return not self.has_children()
@@ -135,13 +160,16 @@ class QuadTreeNode(dict):
         return self.parent == None
 
     def runFunc(self, f):
-        """Runs the function on the node and its children"""
+        """Runs the function on the node and its children.
+        The function must take a node as a parameter"""
         f(self)
 
         for child in self.children:
             child.runFunc(f)
 
     def split_until(self, depth, leafClass=None):
+        """Subdivides a quadtree until the specified depth. Leaf nodes
+        will be of the  type QuadTreeNode unless leafClass is specified."""
 
         if(self.depth == depth - 1):
             # split into leaf nodes
@@ -155,6 +183,7 @@ class QuadTreeNode(dict):
                 child.split_until(depth, leafClass=leafClass)
 
     def size(self):
+        """Determine the total number of nodes in the tree"""
         size = 1
         for child in self.children:
             size += child.size()
@@ -162,6 +191,7 @@ class QuadTreeNode(dict):
         return size
 
     def split(self, leafClass=None):
+        """Subdivides a node into four approximately equal sized quadrants"""
         rects = self.rect.splitIntoQuads()
         for rect in rects:
             if leafClass == None:
