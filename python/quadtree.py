@@ -160,7 +160,8 @@ class QuadTreeNode(dict):
         return tree
 
     def find_leaf(self, x, y):
-        """Finds the leaf which contains (x,y)"""
+        """Finds the leaf which contains (x,y). If no such node can be located,
+        None is returned."""
         if self.is_leaf():
             return self
 
@@ -168,12 +169,37 @@ class QuadTreeNode(dict):
             if child.contains(x,y):
                 return child.find_leaf(x, y)
 
+        return None
+
+    def find_root(self):
+        """Traverse the tree from the leaves to the root and returns the root
+        when found. If the tree is broken (i.e. parents are not restored during
+        an import operation, the node will return a reference to itself)"""
+        if self.parent is not None:
+            return parent.find_root()
+
+        return self
+
+    def find_node_containing(self, x, y):
+        """Traverse the tree in either direction to find a node which contains
+        the pair (x,y). Returns none of no such node can be found."""
+
+        if self.parent is None:
+            return None
+
+        if self.parent.contains(x,y):
+            return parent.find_leaf(x,y)
+        else:
+            return parent.find_node_containing(x,y)
+
+
     def has_children(self):
         """Determines if this node has children"""
         return len(self.children) > 0
 
     def insert(self, x, y, datum):
-        """Inserts the specified data into the tree"""
+        """Traverse the tree from the root towards the leaves and insert the
+        data into the appropriate leaf"""
         for child in self.children:
             if child.contains(x, y):
                 return child.insert(x, y, datum)
