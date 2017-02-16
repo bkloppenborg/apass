@@ -8,17 +8,13 @@ import glob
 
 # multithreading
 from multiprocessing import Pool
-from threading import Lock
+import threading
 import signal
-
-# function parameter mapping
-from functools import partial
 
 # APASS-specific things
 from quadtree import *
 from quadtree_types import *
 from apass import *
-from apass_types import *
 
 class WriteLock():
     """A class which provides mutually exclusive access to a file without using
@@ -29,10 +25,12 @@ class WriteLock():
 
         datapath -- The full path to a directory where .dat files may be written
         file_id -- An integer representing a specific file"""
-        self.filename = datapath + "/" + str(file_id).zfill(5) + ".dat"
-        self.lock = Lock()
+        self.file_id = file_id
+        self.filename = datapath + "/z" + str(file_id).zfill(5) + ".fredbin"
+        self.lock = threading.Lock()
         self.outfile = None
         self.count = 0
+        self.linecount = 0
 
     def open(self):
         """Opens the file or increment the reference counter"""
@@ -45,23 +43,33 @@ class WriteLock():
 
     def close(self):
         """Decrements the reference counter and closes the file when it is no
-        longer needed"""
+        longer needed. Returns true if the reference count was zero and the
+        file was closed."""
         with self.lock:
             self.count -= 1
 
-            if self.count == 0:
+            if self.count <= 0:
                 self.outfile.close()
                 self.outfile = None
+                return True
+
+        return False
 
     def write(self, data):
         """Writes data to the file."""
         with self.lock:
+
+#            if self.id == 3329 and self.linecount == 29894:
+#                print(data)
+
             self.outfile.write(data)
+            self.linecount += 1
 
 class FileStore():
     """A class which manages multiple access to multiple files for multiple
     threads"""
     files = {}
+    lock = threading.Lock()
 
     def __init__(self, datapath):
         """Create the Filestore
@@ -73,27 +81,35 @@ class FileStore():
         """Open the file corresponding to file_id
 
         file_id -- an integer representing the file we wish to open"""
-        if not file_id in self.files.keys():
-            self.files[file_id] = WriteLock(self.datapath, file_id)
+        with self.lock:
+            if not file_id in self.files.keys():
+                self.files[file_id] = WriteLock(self.datapath, file_id)
 
-        self.files[file_id].open()
+            self.files[file_id].open()
 
     def close(self, file_id):
         """Closes the file with the specified file_id"""
-        self.files[file_id].close()
+        with self.lock:
+            file_closed = self.files[file_id].close()
+
+            if file_closed:
+                del self.files[file_id]
 
     def write(self, file_id, data):
         """Writes data to the file with the corresponding file_id"""
         self.files[file_id].write(data)
 
 
-def fred_to_zone(tree_file, filestore, filename):
+def fred_to_zone(filename):
     """Processes an APASS FRED file into zones using data contained in the tree
 
     tree_file --- the full path to a JSON file containing tree generated using make-zones.py
     filestore --- a reference to a FileStore object
     filename --- the APASS FRED file to process"""
 #    print("starting with %s %s" % (tree_file, filename))
+
+    global filestore
+    global tree_file
 
     # restore the tree. make-zones.py writes out leaves of type IDLeaf
     tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
@@ -107,9 +123,8 @@ def fred_to_zone(tree_file, filestore, filename):
     open_files = set()
     for datum in np.nditer(data):
         # pull out the RA and DEC
-        ra  = datum['ra']
-        dec = datum['dec']
-        file_id = tree.insert(ra * cos(dec * pi / 180), dec, None)
+        [ra, dec] = get_coords(datum)
+        file_id = tree.insert(ra, dec, None)
 
         if file_id not in open_files:
             filestore.open(file_id)
@@ -127,22 +142,25 @@ def main():
 
     parser = argparse.ArgumentParser(description='Merges .fred photometric files')
     #parser.add_argument('outdir', help="Directory into which .fredbin files will be generated")
-    parser.add_argument('tree', help="Global zone map file produced by make-zones.py")
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs")
     parser.set_defaults(jobs=1)
 
     args = parser.parse_args()
 
-    outdir = '/tmp/apass'
-    wait_period = 120
-    filestore = FileStore(outdir)
+    # TODO:
+    # BUG: running with -j4 corrupts /tmp/apass/z03329.fredbin, disable parallel
+    # processing (for now)
+    args.jobs = 1
 
-    # check for existing lockfiles
-    lockfiles = glob.glob(outdir + "/*.lock")
-    if len(lockfiles) > 0:
-        print("Output directory contains lockfiles. Please remove to proceed")
-        exit(0)
+    global filestore
+    global tree_file
+
+    outdir = apass_save_dir
+    wait_period = 300
+
+    filestore = FileStore(outdir)
+    tree_file = apass_save_dir + "/global.json"
 
     # If you are going to profile the code, run this instead:
     #fred_to_zone(args.tree, filestore, args.input[0])
@@ -152,9 +170,11 @@ def main():
     # dispatch to each thread using threadfunc
     pool = Pool(args.jobs)
     try:
-        threadfunc = partial(fred_to_zone, args.tree, filestore)
-        res = pool.map_async(threadfunc, args.input)
-        res.get(wait_period) # wait 60 seconds for the thread to complete
+        # use the following during production runs, keyboard interrupts won't be handled
+        pool.map(fred_to_zone, args.input)
+        # use this when developing/debugging, interrupts handled
+        #res = pool.map_async(threadfunc, args.input)
+        #get(wait_period)
     except KeyboardInterrupt:
         print("Caught keyboard interrupt, terminating workers.")
         pool.terminate()

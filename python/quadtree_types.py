@@ -24,3 +24,5 @@ class IDLeaf(QuadTreeNode):
         """Returns an ID into which insert should occur.
         NOTE: DOES NOT INSERT ANY DATA"""
         return self.node_id
+
+

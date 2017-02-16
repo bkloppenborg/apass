@@ -29,6 +29,15 @@ class Rect(dict):
             return True
         return False
 
+    def expand(self, other):
+        """Expands this rectangle to include the other rectangle's bounds
+
+        other -- another Rect instance"""
+        self.x_min = min(self.x_min, other.x_min)
+        self.x_max = max(self.x_max, other.x_max)
+        self.y_min = min(self.y_min, other.y_min)
+        self.y_max = max(self.y_max, other.y_max)
+
     @staticmethod
     def from_dict(dict_):
         """Restores a Rect from a dictionary"""
@@ -37,6 +46,16 @@ class Rect(dict):
         y_min = dict_['y_min']
         y_max = dict_['y_max']
         return Rect(x_min, x_max, y_min, y_max)
+
+    def overlaps(self, other):
+        """Determines if two rectangles overlap"""
+        # implemented as "when do two rectangles NOT overlap?"
+        if (other.y_max < self.y_min or
+            other.x_max < self.x_min or
+            other.x_min > self.x_max or
+            other.y_min > self.y_max):
+            return False
+        return True
 
     def splitIntoQuads(self):
         """Splits a rectangle into four quadrants"""
@@ -140,6 +159,15 @@ class QuadTreeNode(dict):
         tree.runFunc(restore_parent_to_children)
         return tree
 
+    def find_leaf(self, x, y):
+        """Finds the leaf which contains (x,y)"""
+        if self.is_leaf():
+            return self
+
+        for child in self.children:
+            if child.contains(x,y):
+                return child.find_leaf(x, y)
+
     def has_children(self):
         """Determines if this node has children"""
         return len(self.children) > 0
@@ -151,7 +179,7 @@ class QuadTreeNode(dict):
                 return child.insert(x, y, datum)
 
         # hopefully we never encounter this...
-        raise("Could not find a node containing the point (%i, %i)!" % (x,y))
+        raise ValueError("Could not find a node containing the point (%f, %f)" % (x,y))
 
     def is_leaf(self):
         return not self.has_children()

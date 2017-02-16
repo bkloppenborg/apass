@@ -36,11 +36,15 @@ def export_rect(node):
 def plot_zones(tree):
     """Plots leaf zones found in the global rects variable"""
     tree.runFunc(export_rect)
+    bounds = tree.rect
+    xlim = [bounds.x_min, bounds.x_max]
+    ylim = [bounds.y_min, bounds.y_max]
 
     fig = plt.figure()
     axes = plt.gca()
-    axes.set_xlim([0, 360])
-    axes.set_ylim([-90, 90])
+    axes.set_xlim(xlim)
+    axes.set_ylim(ylim)
+
     for rect in rects:
         x = rect.x_min
         y = rect.y_min

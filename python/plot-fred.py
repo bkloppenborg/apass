@@ -23,8 +23,10 @@ def main():
         data = np.loadtxt(filename, dtype=dtype)
 
         print("Read " + str(data.size) + " lines")
+        dec = data['dec']
+        ra = data['ra'] * np.cos(dec * pi/180)
 
-        plt.scatter(data['ra'], data['dec'])
+        plt.scatter(ra, dec)
         plt.show()
 
 
