@@ -3,6 +3,7 @@
 import numpy as np
 from numpy import cos
 from math import pi
+import re
 
 apass_save_dir = '/home/data/apass-test/'
 
@@ -27,3 +28,36 @@ def get_coords(datum):
     dec = datum['dec']
     ra_  = datum['ra'] * cos(dec * pi / 180)
     return [ra_, dec]
+
+# store information in the following format
+# write files to something like this:
+#  zXXXXX.fredbin - zone file
+#  zXXXXX/nYYYY-cZZZZ.fredbin - zone, node, and container
+
+def zone_from_name(filename):
+    match = re.search("z[0-9]*", filename)
+    if match:
+        return int(match.group(0)[1:])
+    return None
+
+def node_from_name(filename):
+    match = re.search("n[0-9]*", filename)
+    if match:
+        return int(match.group(0)[1:])
+    return None
+
+def container_from_name(filename):
+    match = re.search("c[0-9]*", filename)
+    if match:
+        return int(match.group(0)[1:])
+    return None
+
+def name_rect(zone_id, node_id, container_id):
+    name = "z" + str(zone_id).zfill(5) + "-" + \
+           "n" + str(node_id).zfill(4) + "-" + \
+           "c" + str(container_id).zfill(4) + ".fredbin"
+
+    return name
+
+def name_zone(zone_id):
+    return "z" + str(file_id).zfill(5) + ".fredbin"

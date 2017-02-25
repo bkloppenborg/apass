@@ -26,7 +26,7 @@ class WriteLock():
         datapath -- The full path to a directory where .dat files may be written
         file_id -- An integer representing a specific file"""
         self.file_id = file_id
-        self.filename = datapath + "/z" + str(file_id).zfill(5) + ".fredbin"
+        self.filename = datapath + "/" + name_zone(file_id)
         self.lock = threading.Lock()
         self.outfile = None
         self.count = 0

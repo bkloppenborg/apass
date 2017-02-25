@@ -242,6 +242,16 @@ class QuadTreeNode(dict):
         for child in self.children:
             child.runFunc(f)
 
+    def runFuncRet(self, f):
+        """Same as runFunc, but to be used with a function that returns a list."""
+        output = []
+        output.extend(f(self))
+
+        for child in self.children:
+            output.extend(child.runFuncRet(f))
+
+        return output
+
     def split_until(self, depth, leafClass=None):
         """Subdivides a quadtree until the specified depth. Leaf nodes
         will be of the  type QuadTreeNode unless leafClass is specified."""
