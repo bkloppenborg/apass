@@ -47,6 +47,21 @@ class Rect(dict):
         y_max = dict_['y_max']
         return Rect(x_min, x_max, y_min, y_max)
 
+    def get_corners(self):
+        corners = []
+        corners.append((self.x_min, self.y_min))
+        corners.append((self.x_min, self.y_max))
+        corners.append((self.x_max, self.y_min))
+        corners.append((self.x_max, self.y_max))
+        return corners
+
+    def grow(self, radius):
+        """Expands the rectangle by radius in all directions"""
+        self.x_min -= radius
+        self.x_max += radius
+        self.y_min -= radius
+        self.y_max += radius
+
     def overlaps(self, other):
         """Determines if two rectangles overlap"""
         # implemented as "when do two rectangles NOT overlap?"
@@ -188,9 +203,15 @@ class QuadTreeNode(dict):
             return None
 
         if self.parent.contains(x,y):
-            return parent.find_leaf(x,y)
+            return self.parent.find_leaf(x,y)
         else:
-            return parent.find_node_containing(x,y)
+            return self.parent.find_node_containing(x,y)
+
+    def get_leaves(self):
+        leaves = []
+        func = partial(get_leaves, leaves=leaves)
+        self.runFunc(func)
+        return leaves
 
 
     def has_children(self):
@@ -263,3 +284,9 @@ def restore_parent_to_children(node):
     """Restores this node as the parent of its children. Used in de-serialization."""
     for child in node.children:
         child.parent = node
+
+def get_leaves(node, leaves=None):
+    if leaves is None:
+        raise ValueError("You must specify leaves via keyword using functools.partial")
+    if node.is_leaf():
+        leaves.append(node)

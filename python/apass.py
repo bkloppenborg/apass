@@ -4,7 +4,7 @@ import numpy as np
 from numpy import cos
 from math import pi
 
-apass_save_dir = '/tmp/apass'
+apass_save_dir = '/home/data/apass-test/'
 
 # FRED files have the following format:
 ## STANDARD MAGNITUDES ONLY

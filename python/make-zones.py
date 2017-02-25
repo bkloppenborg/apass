@@ -9,6 +9,8 @@ from math import pi
 from quadtree import *
 from quadtree_types import *
 
+import apass
+
 def merge_polar_zones(node):
     """Replaces QuadTree nodes that reside completely within the polar zones
     with a IDLeaf node with fileid = [0=North,1=South]"""
@@ -68,7 +70,7 @@ def main():
     global fileid # used in quadtree_types.py
     fileid = 2 # reserve 0, 1 for the poles
 
-    zonefile = '/tmp/apass/global.json'
+    zonefile = apass.apass_save_dir + '/global.json'
 
     # subdivde the sphere to this depth:
     depth = 6 # dRA = 5.625 dDEC = 2.8125
