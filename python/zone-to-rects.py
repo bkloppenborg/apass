@@ -27,6 +27,7 @@ def zone_to_rects(filename):
 
     # read in the (binary) data file
     data = read_fredbin(filename)
+    print "Processing '%s' which has %i data points " % (filename, data.size)
 
     # find the bounds of this zone using the first data point in the file
     global_tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
@@ -34,21 +35,16 @@ def zone_to_rects(filename):
     ra, dec = get_coords(datum)
     zone_node = global_tree.find_leaf(ra, dec)
     zone_bounds = zone_node.rect
-    #print zone_bounds
 
     # build a tree for the zone
-    print("Building tree")
     zone_tree = QuadTreeNode(zone_bounds, 0, parent=None)
     zone_tree.split_until(depth, leafClass=RectLeaf)
 
     # insert the data into the tree, building up containers (rectangles) in the
     # process
-    print("Inserting data into the tree")
-    print("Data size: %i" % (data.size))
     for datum in np.nditer(data):
         ra, dec = get_coords(datum)
         zone_tree.insert(ra, dec, datum)
-
 
     # prepare the save the data. Begin by setting the output directory to match
     # the zone file's name
@@ -57,18 +53,15 @@ def zone_to_rects(filename):
         os.makedirs(directory)
 
     # now number the (leaf) nodes
-    number_containers(zone_tree, zone_id)
+    number_containers(zone_tree, zone_id=zone_id)
     #plot_rects(zone_tree) # plot the nodes before the merge
-    zone_border_containers = zone_tree.runFuncRet(merge_containers_on_borders)
+    leaves = zone_tree.get_leaves()
+    zone_border_info = merge_containers_on_borders(leaves)
     #plot_rects(zone_tree) # plot the nodes after the merge
 
     # write out the containers that were on the border
-    filename = directory + '/border-rects.txt'
-    outfile = open(filename, 'w')
-    for container in zone_border_containers:
-        name = apass.name_rect(container.zone_id, container.node_id, container.container_id)
-        outfile.write(name + "\n")
-    outfile.close()
+    filename = directory + '/zone-border-rects.json'
+    save_border_info(filename, zone_border_info)
 
     # save the rectangle data to file
     func = partial(save_data, directory=directory)
@@ -81,15 +74,8 @@ def save_data(node, directory="/tmp"):
     """Saves the data from the RectLeaf's RectContainers to disk."""
 
     # this runs only on RectLeaf objects
-    if not isinstance(node, RectLeaf):
-        return
-
-    # write out the data in each container.
-    for container in node.containers:
-        container.save(directory)
-
-    # remove the RectContainers from this node for serialization
-    node.containers = []
+    if isinstance(node, RectLeaf):
+        node.save_data(directory)
 
 def number_containers(tree, zone_id=0):
 
@@ -100,7 +86,8 @@ def number_containers(tree, zone_id=0):
         if not isinstance(leaf, RectLeaf):
             raise RuntimeError("Encountered an unexpected non-RectLeaf node!")
 
-        leaf.node_id = node_id;
+        leaf.zone_id = zone_id
+        leaf.node_id = node_id
         node_id += 1
 
         container_id = 0
@@ -110,35 +97,36 @@ def number_containers(tree, zone_id=0):
             container.container_id = container_id
             container_id += 1
 
-def merge_containers_on_borders(node):
+def merge_containers_on_borders(nodes):
     """This function merges containers that reside on the border of cells.
     Any container that resides on the border of the zone will be returned
-    from this function in the format [zone_id, node_id, container_id]"""
+    as a border_info dict made by apass.make_border_info(...)"""
 
-    zone_border_rects = []
+    zone_border_rects = dict()
+    for node in nodes:
 
-    if not isinstance(node, RectLeaf):
-        return zone_border_rects
+        if not isinstance(node, RectLeaf):
+            continue
 
-    # iterate over every RectContainer in the RectLeaf node
-    for container in node.containers:
-        rect = container.rect
+        # iterate over every RectContainer in the RectLeaf node
+        for container in node.containers:
+            rect = container.rect
 
-        # Get a unique list of nodes containing the corners of the rectangle.
-        # These will be of the type RectLeaf
-        nodes = get_containing_nodes(node, rect)
-        nodes.remove(node)
+            # Get a unique list of nodes containing the corners of the rectangle
+            # excluding this node. These will be of the type RectLeaf.
+            other_nodes = get_containing_nodes(node, rect)
+            other_nodes.remove(node)
 
-        # iterate through the list of other nodes and attempt to merge
-        # containers
-        for other_node in nodes:
-            # If a node is None, that means the rectangle is on the border of a
-            # zone. Save this RectContainer for later analysis
-            if other_node is None:
-                if node not in zone_border_rects:
-                    zone_border_rects.append(container)
-            else:
-                other_node.merge_containers(container)
+            # iterate through the list of other nodes and attempt to merge
+            # containers
+            for other_node in other_nodes:
+                if other_node is None:
+                    info = apass.make_border_info(container)
+                    zone_border_rects.update(info)
+                else:
+                    other_containers = other_node.get_overlapping_containers(container, remove=True)
+                    for other in other_containers:
+                        container.merge(other)
 
     return zone_border_rects
 

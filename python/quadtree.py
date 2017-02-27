@@ -55,6 +55,11 @@ class Rect(dict):
         corners.append((self.x_max, self.y_max))
         return corners
 
+    def get_center(self):
+        x = self.x_min + (self.x_max - self.x_min) / 2
+        y = self.y_min + (self.y_max - self.y_min) / 2
+        return (x,y)
+
     def grow(self, radius):
         """Expands the rectangle by radius in all directions"""
         self.x_min -= radius

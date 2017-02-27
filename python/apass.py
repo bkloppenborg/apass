@@ -4,6 +4,7 @@ import numpy as np
 from numpy import cos
 from math import pi
 import re
+import json
 
 apass_save_dir = '/home/data/apass-test/'
 
@@ -23,8 +24,11 @@ def read_fredbin(filename):
     dtype={'names': apass_col_names,'formats': apass_col_types}
     return np.fromfile(filename, dtype)
 
+def get_coords_raw(ra, dec):
+    ra_  = ra * cos(dec * pi / 180)
+    return [ra_, dec]
+
 def get_coords(datum):
-    """Extracts the """
     dec = datum['dec']
     ra_  = datum['ra'] * cos(dec * pi / 180)
     return [ra_, dec]
@@ -52,12 +56,49 @@ def container_from_name(filename):
         return int(match.group(0)[1:])
     return None
 
+def name_zone_file(zone_id):
+    return name_zone + ".fredbin"
+
+def name_zone(zone_id):
+    return "z" + str(zone_id).zfill(5)
+
+def name_node(zone_id, node_id):
+    name = "z" + str(zone_id).zfill(5) + "-" + \
+           "n" + str(node_id).zfill(4)
+    return name
+
+def name_rect_file(zone_id, node_id, container_id):
+    return name_rect(zone_id, node_id, container_id) + ".fredbin"
+
 def name_rect(zone_id, node_id, container_id):
     name = "z" + str(zone_id).zfill(5) + "-" + \
            "n" + str(node_id).zfill(4) + "-" + \
-           "c" + str(container_id).zfill(4) + ".fredbin"
-
+           "c" + str(container_id).zfill(4)
     return name
 
-def name_zone(zone_id):
-    return "z" + str(file_id).zfill(5) + ".fredbin"
+def get_pair(list_object):
+    x = float(list_object.pop(0))
+    y = float(list_object.pop(0))
+    return (x,y)
+
+def make_border_info(container):
+    info = dict()
+    name = name_rect(container.zone_id, container.node_id, container.container_id)
+    info['filename']     = name + ".fredbin"
+    info['zone_id']      = container.zone_id
+    info['node_id']      = container.node_id
+    info['container_id'] = container.container_id
+    info['center']       = container.rect.get_center()
+
+    nested = {name: info}
+    return nested
+
+def save_border_info(filename, information):
+    json_str = json.dumps(information)
+    with open(filename, 'w') as outfile:
+        outfile.write(json_str)
+
+def load_border_info(filename):
+    json_str = open(filename).read()
+    info = json.loads(json_str)
+    return info
