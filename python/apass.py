@@ -57,7 +57,7 @@ def container_from_name(filename):
     return None
 
 def name_zone_file(zone_id):
-    return name_zone + ".fredbin"
+    return name_zone(zone_id) + ".fredbin"
 
 def name_zone(zone_id):
     return "z" + str(zone_id).zfill(5)
