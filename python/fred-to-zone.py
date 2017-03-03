@@ -15,74 +15,18 @@ from quadtree import *
 from quadtree_types import *
 from apass import *
 
-class Operation(Enum):
-    STOP = 0
-    OPEN = 1
-    CLOSE = 2
-    WRITE = 3
+import sys, os
+sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
+from filelock import FileLock
 
-class FileHandle:
-    def __init__(self, zone_id):
-        self.filename = apass_save_dir + "/" + name_zone_file(zone_id)
-        self.count = 0
-        self.outfile = None
-
-    def open(self):
-        if self.outfile is None:
-            self.outfile = open(self.filename, 'a+b')
-            self.count = 1
-        else:
-            self.count += 1
-
-    def close(self):
-        self.count -= 1
-        if self.count <= 0:
-            self.outfile.close()
-
-    def write(self, data):
-        self.outfile.write(data)
-
-    def flush(self):
-        self.outfile.flush()
-
-
-def writer_func(queue):
-
-    print("Starting writer process")
-    handles = {}
-
-    while(True):
-        # pull an item off the queue
-        operation, zone_id, data = queue.get()
-        # print [operation, zone_id]
-
-        # termination condition
-        if operation == Operation.STOP:
-            break
-
-        if operation == Operation.OPEN:
-            handle = FileHandle(zone_id)
-            handle.open()
-            handles[zone_id] = handle
-        elif operation == Operation.CLOSE:
-            handle = handles[zone_id]
-            handle.flush()
-            handle.close()
-            if handle.outfile.closed:
-                del handles[zone_id]
-        elif operation == Operation.WRITE:
-            handle = handles[zone_id]
-            handle.write(data)
-        else:
-            raise RuntimeError("The requested operation is not implemented!")
-
-
-def fred_to_zone_func(queue, filename):
+def fred_to_zone_func(filename):
     """Processes an APASS FRED file into zones using data contained in the tree
 
     tree_file --- the full path to a JSON file containing tree generated using make-zones.py
     filestore --- a reference to a FileStore object
     filename --- the APASS FRED file to process"""
+
+    zone_dict = {}
 
     global tree_file
 
@@ -101,28 +45,21 @@ def fred_to_zone_func(queue, filename):
         [ra, dec] = get_coords(datum)
         zone_id = tree.insert(ra, dec, None)
 
-        if zone_id not in open_files:
-            enqueue_open(queue, zone_id)
-            open_files.add(zone_id)
+        if zone_id not in zone_dict.keys():
+            zone_dict[zone_id] = list()
 
-        enqueue_write(queue, zone_id, datum)
+        zone_dict[zone_id].append(datum)
 
-    # inform the filestore that we are done with the files.
-    for zone_id in open_files:
-        enqueue_close(queue, zone_id)
+    for zone_id, data in zone_dict.iteritems():
+        filename = apass_save_dir + '/' + name_zone_file(zone_id)
 
-def enqueue_stop(queue):
-    queue.put([Operation.STOP, -1, None])
+        with FileLock(filename):
+            with open(filename, 'a+b') as outfile:
+                for datum in data:
+                    outfile.write(datum)
 
-def enqueue_open(queue, zone_id):
-    queue.put([Operation.OPEN, zone_id, None])
-
-def enqueue_close(queue, zone_id):
-    queue.put([Operation.CLOSE, zone_id, None])
-
-def enqueue_write(queue, zone_id, data):
-    queue.put([Operation.WRITE, zone_id, data])
-
+            with open(filename + ".contrib", 'a+') as outfile:
+                outfile.write(filename + "\n")
 
 def main():
 
@@ -141,21 +78,14 @@ def main():
 
     # set up the pool
     pool = mp.Pool(args.jobs)
-    manager = mp.Manager()
-    writer_queue = manager.Queue()
 
-    # start up the writer
-    writer_proc = mp.Process(target=writer_func, args=(writer_queue,))
-    writer_proc.start()
-
-    for filename in args.input:
-        pool.apply_async(fred_to_zone_func, (writer_queue, filename))
+    # farm out the jobs and wait for the result
+    result = pool.map_async(fred_to_zone_func, args.input)
+    result.get()
 
     # wait for the pool to complete
     pool.close()
     pool.join()
-    enqueue_stop()
-    writer_proc.join()
 
 
 if __name__ == "__main__":

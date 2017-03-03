@@ -231,7 +231,7 @@ class QuadTreeNode(dict):
                 return child.insert(x, y, datum)
 
         # hopefully we never encounter this...
-        raise ValueError("Could not find a node containing the point (%f, %f)" % (x,y))
+        raise RuntimeError("Could not find a node containing the point (%f, %f)" % (x,y))
 
     def is_leaf(self):
         return not self.has_children()
