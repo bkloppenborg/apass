@@ -44,7 +44,13 @@ def zone_to_rects(filename):
     # process
     for datum in np.nditer(data):
         ra, dec = get_coords(datum)
-        zone_tree.insert(ra, dec, datum)
+        try:
+            zone_tree.insert(ra, dec, datum)
+        except RuntimeError:
+            print("ERROR: Potential data corruption in " + filename)
+            print("ERROR: Check file, remove the zone directory, and re-run this program")
+            return
+
 
     # prepare the save the data. Begin by setting the output directory to match
     # the zone file's name
@@ -224,21 +230,15 @@ def main():
     #    zone_to_rects(filename)
     #return
 
-    # generate a pool of threads to process the input FRED files
-    # dispatch to each thread using threadfunc
+    # generate a pool of threads to process the input
     pool = Pool(args.jobs)
-    try:
-        # use the following during production runs, keyboard interrupts won't be handled
-        pool.map(zone_to_rects, args.input)
-        # use this when developing/debugging, interrupts handled
-        #res = pool.map_async(zone_to_rects, args.input)
-        #res.get(wait_period)
-    except KeyboardInterrupt:
-        print("Caught keyboard interrupt, terminating workers.")
-        pool.terminate()
-    else:
-        pool.close()
 
+    # farm out the work
+    result = pool.map_async(zone_to_rects, args.input)
+    result.get()
+
+    # close out the computation
+    pool.close()
     pool.join()
 
 if __name__ == "__main__":
