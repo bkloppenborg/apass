@@ -63,7 +63,7 @@ def fred_to_zone_func(filename):
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Merges .fred photometric files')
+    parser = argparse.ArgumentParser(description='Parses .fred files into zone .fredbin files')
     #parser.add_argument('outdir', help="Directory into which .fredbin files will be generated")
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs")
