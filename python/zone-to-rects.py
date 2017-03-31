@@ -43,6 +43,7 @@ def zone_to_rects(filename):
     # insert the data into the tree, building up containers (rectangles) in the
     # process
     for datum in np.nditer(data):
+        datum = datum.copy()
         ra, dec = get_coords(datum)
         try:
             zone_tree.insert(ra, dec, datum)
@@ -52,11 +53,9 @@ def zone_to_rects(filename):
             return
 
 
-    # prepare the save the data. Begin by setting the output directory to match
+    # prepare the save the data. 
     # the zone file's name
-    directory = os.path.splitext(filename)[0]
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    filename_no_ext = os.path.splitext(filename)[0]
 
     # now number the (leaf) nodes
     number_containers(zone_tree, zone_id=zone_id)
@@ -66,42 +65,44 @@ def zone_to_rects(filename):
     #plot_rects(zone_tree) # plot the nodes after the merge
 
     # write out the containers that were on the border
-    filename = directory + '/zone-border-rects.json'
+    filename = filename_no_ext + '-border-rects.json'
     save_border_info(filename, zone_border_info)
 
-    # save the rectangle data to file
-    func = partial(save_data, directory=directory)
-    zone_tree.runFunc(func)
+    apass.save_zone_data(zone_tree, apass.apass_save_dir)
 
     # save the zone -> container mapping
-    QuadTreeNode.to_file(zone_tree, directory + "/zone.json")
-
-def save_data(node, directory="/tmp"):
-    """Saves the data from the RectLeaf's RectContainers to disk."""
-
-    # this runs only on RectLeaf objects
-    if isinstance(node, RectLeaf):
-        node.save_data(directory)
+    QuadTreeNode.to_file(zone_tree, filename_no_ext + "-zone.json")
 
 def number_containers(tree, zone_id=0):
 
     node_id = 0
     leaves = tree.get_leaves()
 
+    # number the leaves with unique node identifiers
     for leaf in leaves:
         if not isinstance(leaf, RectLeaf):
             raise RuntimeError("Encountered an unexpected non-RectLeaf node!")
 
         leaf.zone_id = zone_id
         leaf.node_id = node_id
-        node_id += 1
 
+        # number the containers with unique container IDs
         container_id = 0
         for container in leaf.containers:
             container.zone_id = zone_id
             container.node_id = node_id
             container.container_id = container_id
+
+            # number the data with the corresponding (node_id, container_id)
+            for i in range(0, len(container.data)):
+                container.data[i]['node_id'] = node_id
+                container.data[i]['container_id'] = container_id
+
+            # increment the container ID
             container_id += 1
+
+        # increment the node ID
+        node_id += 1
 
 def merge_containers_on_borders(nodes):
     """This function merges containers that reside on the border of cells.
@@ -218,6 +219,8 @@ def main():
     parser = argparse.ArgumentParser(description='Merges .fred photometric files')
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs")
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help="Run in debug mode")
     parser.set_defaults(jobs=1)
 
     args = parser.parse_args()
@@ -226,20 +229,20 @@ def main():
     tree_file = apass_save_dir + "/global.json"
 
     # use this for single thread development and debugging
-    #for filename in args.input:
-    #    zone_to_rects(filename)
-    #return
+    if args.debug:
+        for filename in args.input:
+            zone_to_rects(filename)
+    else:
+        # generate a pool of threads to process the input
+        pool = Pool(args.jobs)
 
-    # generate a pool of threads to process the input
-    pool = Pool(args.jobs)
+        # farm out the work
+        result = pool.map_async(zone_to_rects, args.input)
+        result.get()
 
-    # farm out the work
-    result = pool.map_async(zone_to_rects, args.input)
-    result.get()
-
-    # close out the computation
-    pool.close()
-    pool.join()
+        # close out the computation
+        pool.close()
+        pool.join()
 
 if __name__ == "__main__":
     main()

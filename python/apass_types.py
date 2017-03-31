@@ -25,23 +25,10 @@ class RectContainer(dict):
         # self.data is a list of numpy.ndarray objects
         self.data = []
         if data is not None:
-            self.data.append(data)
+            self.append_data(data)
 
     def contains(self, x, y):
         return self.rect.contains(x,y)
-
-    def delete_from_directory(self, directory):
-
-        if self.zone_id < 0 or self.node_id < 0 or self.container_id < 0:
-            raise RuntimeError("Cannot restore a RectContainer object when it is uninitialized!")
-
-        filename = directory + "/" + \
-                   apass.name_rect_file(self.zone_id, self.node_id, self.container_id)
-
-        if not self.moved:
-            print("Cannot delete %s, the corresponding container has not been moved" % (filename))
-        else:
-            os.remove(filename)
 
     @staticmethod
     def from_dict(dict_):
@@ -61,26 +48,25 @@ class RectContainer(dict):
         container.rect = Rect.from_dict(dict_['rect'])
         return container
 
-    def load_from_directory(self, directory):
-        if self.zone_id < 0 or self.node_id < 0 or self.container_id < 0:
-            raise RuntimeError("Cannot restore a RectContainer object when it is uninitialized!")
-
-        filename = directory + "/" + \
-                   apass.name_rect_file(self.zone_id, self.node_id, self.container_id)
-        return self.load_from_file(filename)
-
-    def load_from_file(self, filename):
-        # recover the zone_id, node_id, and container_id from the filename
-        data = apass.read_fredbin(filename)
-        for datum in data:
-            self.data.append(datum)
+    def append_data(self, data):
+        """Appends the specified data to this object"""
+        self.data.append(data)
 
     def merge(self, other, mark_moved=False):
         """Merges two RectContainer Instances, growing their bounding rectangles
         other -- another RectContainer instance"""
-        self.rect.expand(other.rect)
-        self.data.extend(other.data)
 
+        # grow the border:
+        self.rect.expand(other.rect)
+
+        # re-number the other container's data IDs and append it to this node's data
+        for i in range(0, len(other.data)):
+            other.data[i]['node_id'] = self.node_id
+            other.data[i]['container_id'] = self.container_id
+        self.data.extend(other.data)
+        other.data = []
+
+        # mark the other container's data as moved to this container
         if mark_moved:
             other.moved = True
             other.moved_zone_id = self.zone_id
@@ -93,18 +79,14 @@ class RectContainer(dict):
         other -- another RectContainer instance"""
         return self.rect.overlaps(other.rect)
 
-    def save_to_directory(self, directory):
-        filename = directory + "/" + \
-                   apass.name_rect_file(self.zone_id, self.node_id, self.container_id)
+    def save_data(self, filehandle):
+        """Writes this container's data to the specified filehandle"""
 
-        self.save_to_file(filename)
+        if len(self.data) == 0:
+            return
 
-    def save_to_file(self, filename):
-
-        outfile = open(filename, 'a+b')
         for datum in self.data:
-            outfile.write(datum)
-        outfile.close()
+            filehandle.write(datum)
         self.data = []
 
     def get_corners(self):
@@ -116,7 +98,7 @@ class RectLeaf(QuadTreeNode):
 
     def __init__(self, rect, depth, parent=None, zone_id=-1, node_id=-1):
         QuadTreeNode.__init__(self, rect, depth, parent)
-
+ 
         self.zone_id = zone_id
         self.node_id = node_id
         self.containers = []
@@ -170,13 +152,22 @@ class RectLeaf(QuadTreeNode):
             container.merge(other)
         self.containers.append(container)
 
-    def load_data(self, directory):
+    def insert_direct(self, data):
+            container_id = data['container_id']
+
+            for container in self.containers:
+                if container.container_id == container_id:
+                    container.append_data(data)
+
+    def load_data(self, data):
         if self.zone_id < 0 and self.node_id < 0:
             raise RuntimeError("Cannot load data for an uninitialized node!")
 
-        for container in self.containers:
-            container.load_from_directory(directory)
+        for i in range(0, len(data)):
+            container_id = data[i]['container_id']
+            self.containers[container_id].append_data(data[i])
 
-    def save_data(self, directory):
+    def save_data(self, filehandle):
+        """Saves the data in this node to the file handle savefile"""
         for container in self.containers:
-            container.save_to_directory(directory)
+            container.save_data(filehandle)

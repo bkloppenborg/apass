@@ -41,6 +41,9 @@ def fred_to_zone_func(filename):
     # files that were opened in the open_files set
     open_files = set()
     for datum in np.nditer(data):
+        # we are about to modify the datum, make a copy
+        datum = datum.copy()
+
         # pull out the RA and DEC
         [ra, dec] = get_coords(datum)
         zone_id = tree.insert(ra, dec, None)
@@ -48,17 +51,21 @@ def fred_to_zone_func(filename):
         if zone_id not in zone_dict.keys():
             zone_dict[zone_id] = list()
 
+        # update the zone ID and append it to the dictionary
+        datum['zone_id'] = zone_id
         zone_dict[zone_id].append(datum)
 
+    # Write out the data being sure to lock all related files prior to opening
     for zone_id, data in zone_dict.iteritems():
-        filename = apass_save_dir + '/' + name_zone_file(zone_id)
+        zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
+        contrib_filename = apass_save_dir + '/' + name_zone_contrib_file(zone_id)
 
-        with FileLock(filename):
-            with open(filename, 'a+b') as outfile:
+        with FileLock(zone_filename):
+            with open(zone_filename, 'a+b') as outfile:
                 for datum in data:
                     outfile.write(datum)
 
-            with open(filename + ".contrib", 'a+') as outfile:
+            with open(contrib_filename, 'a+') as outfile:
                 outfile.write(filename + "\n")
 
 def main():
@@ -67,6 +74,8 @@ def main():
     #parser.add_argument('outdir', help="Directory into which .fredbin files will be generated")
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs")
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help="Run in debug mode")
     parser.set_defaults(jobs=1)
 
     args = parser.parse_args()
@@ -77,15 +86,20 @@ def main():
     tree_file = apass_save_dir + "/global.json"
 
     # set up the pool
-    pool = mp.Pool(args.jobs)
+    if args.debug:
+        for filename in args.input:
+            fred_to_zone_func(filename)
 
-    # farm out the jobs and wait for the result
-    result = pool.map_async(fred_to_zone_func, args.input)
-    result.get()
+    else:
+        pool = mp.Pool(args.jobs)
 
-    # wait for the pool to complete
-    pool.close()
-    pool.join()
+        # farm out the jobs and wait for the result
+        result = pool.map_async(fred_to_zone_func, args.input)
+        result.get()
+
+        # wait for the pool to complete
+        pool.close()
+        pool.join()
 
 
 if __name__ == "__main__":
