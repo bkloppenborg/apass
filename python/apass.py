@@ -42,6 +42,7 @@ def read_fred(filename):
     dtype={'names': fred_col_names,'formats': fred_col_types}
     data = np.loadtxt(filename, dtype=dtype)
 
+    # append extra type columns for zone_id, node_id, and container_id
     tmp = np.zeros(len(data))
     data = nprf.append_fields(data, fredbin_extra_cols, [tmp, tmp, tmp], dtypes=fredbin_extra_types)
 
