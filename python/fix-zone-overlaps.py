@@ -12,7 +12,7 @@ from apass_types import *
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Merges .fred photometric files')
+    parser = argparse.ArgumentParser(description='Resolves stars residing in two zones by moving data.')
 
     args = parser.parse_args()
 
@@ -46,8 +46,11 @@ def main():
             print(" no zone-border-rects.json file")
             continue
 
-        # get a dictionary containing border rect information
+        # get a dictionary containing border rect information. If it is empty,
+        # skip to the next zone
         border_info = apass.load_border_info(zone_border_info_file)
+        if len(border_info) == 0:
+            continue
 
         # The zone exists and there are rectangles on the border. Load the zone's data
         # and the border rectangle data
@@ -77,12 +80,17 @@ def main():
             adj_zones = []
             for x,y in container.get_corners():
                 # wrap the (x,y) values into 0 <= x <= 360, -90 < y < 90
-                x,y = wrap_bounds(x, y, 0, 360, -90, 90)
+                x,y = wrap_bounds(x, y)
 
                 # find the adjacent zone, skip it if we've been there recently
                 adj_zone = global_tree.find_leaf(x,y)
                 if adj_zone == zone or adj_zone in adj_zones:
                     continue
+
+                if adj_zone is None:
+                    raise RuntimeError("Could not find zone affiliated with %d %d" % (x,y))
+
+
                 adj_zones.append(adj_zone)
 
                 # load the adjacent zone tree
@@ -152,9 +160,14 @@ def main():
         QuadTreeNode.to_file(zone_tree, zone_file)
 
 
-def wrap_bounds(x, y, x_min, x_max, y_min, y_max):
-    # TODO: handle border wrapping
-    return x,y
+def wrap_bounds(ra, dec):
+    if dec < -90 or dec > 90:
+        ra = (ra + 180) % 360
+        dec = 90 - (dec + 90) % 180
+    elif ra < 0 or ra > 360:
+        ra = (ra + 360) % 360
+
+    return ra,dec
 
 if __name__ == "__main__":
     main()
