@@ -85,6 +85,9 @@ def main():
     if args.plot:
         plot_zones(tree)
 
+    leaves = tree.get_leaves()
+    print("Created %i zones" % (len(leaves)))
+
     # write the quadtree
     QuadTreeNode.to_file(tree, zonefile)
 
