@@ -36,11 +36,13 @@ data_col_types = ['int', 'float64', 'float64', 'float64', 'float64', 'int', 'int
 num_filters = 6
 
 def read_data(filename):
+    """Reads in an output data file (e.g. a .dat file)"""
     dtype={'names': data_col_names, 'formats': data_col_types}
     data = np.loadtxt(filename, dtype=dtype)
     return data
 
 def read_fred(filename):
+    """Reads in an APASS FRED file."""
     dtype={'names': fred_col_names,'formats': fred_col_types}
     data = np.loadtxt(filename, dtype=dtype)
 
@@ -51,48 +53,57 @@ def read_fred(filename):
     return data
 
 def read_fredbin(filename):
+    """Reads in an APASS .fredbin file"""
     dtype={'names': fredbin_col_names,'formats': fredbin_col_types}
     return np.fromfile(filename, dtype)
 
 def get_coords_raw(ra, dec):
+    """Returns (ra', dec') = (ra*cos(dec), dec)"""
     ra_  = ra * cos(dec * pi / 180)
     return [ra_, dec]
 
 def get_coords(datum):
+    """Extracts the coordinates from a single datum and returns (ra', dec') = (ra*cos(dec), dec)"""
     dec = datum['dec']
-    ra_  = datum['ra'] * cos(dec * pi / 180)
-    return [ra_, dec]
+    ra  = datum['ra']
+    return get_coords_raw(ra, dec)
 
 # store information in the following format
-# write files to something like this:
 #  zXXXXX.fredbin - zone file
-#  zXXXXX/nYYYY-cZZZZ.fredbin - zone, node, and container
 
 def zone_from_name(filename):
+    """Extracts the zone ID from a filename"""
     match = re.search("z[0-9]*", filename)
     if match:
         return int(match.group(0)[1:])
     return None
 
 def name_zone_file(zone_id):
+    """Produce a name from a zone file given a zone ID"""
     return name_zone(zone_id) + ".fredbin"
 
 def name_zone_container_file(zone_id):
+    """Produces the name for a zone's container given a zone ID"""
     return name_zone(zone_id) + '-container.fredbin'
 
 def name_zone_border_file(zone_id):
+    """Produces the name of a zone border file given a zone ID"""
     return name_zone(zone_id) + '-border-rects.json'
 
 def name_zone(zone_id):
+    """Produces the name of a zone given a zone ID"""
     return "z" + str(zone_id).zfill(5)
 
 def name_zone_contrib_file(zone_id):
+    """Produces the name of a 'zone contribution' file given a zone ID"""
     return name_zone(zone_id) + "-contrib.txt"
 
 def name_zone_json_file(zone_id):
+    """Produces the name of a zone's JSON file given a zone ID"""
     return name_zone(zone_id) + "-zone.json"
 
-def name_rect(zone_id, node_id, container_id):
+def name_container(zone_id, node_id, container_id):
+    """Produces a unique name for the container given the zone, node, and container IDs"""
     output = "z" + str(zone_id).zfill(5) + \
              "n" + str(node_id).zfill(5) + \
              "c" + str(container_id).zfill(5)
@@ -100,17 +111,19 @@ def name_rect(zone_id, node_id, container_id):
     return output
 
 def get_pair(list_object):
+    """Pops the first two elements from the list and returns them as a pair."""
     x = float(list_object.pop(0))
     y = float(list_object.pop(0))
     return (x,y)
 
 def make_border_info(container):
+    """Creates a border info entry for the specified container."""
     info = dict()
     zone_id      = container.zone_id
     node_id      = container.node_id
     container_id = container.container_id
 
-    name = name_rect(zone_id, node_id, container_id)
+    name = name_container(zone_id, node_id, container_id)
 
     info['name']         = name
     info['zone_id']      = zone_id
@@ -122,16 +135,19 @@ def make_border_info(container):
     return nested
 
 def save_border_info(filename, information):
+    """Saves the border information to the specified file."""
     json_str = json.dumps(information)
     with open(filename, 'w') as outfile:
         outfile.write(json_str)
 
 def load_border_info(filename):
+    """Loads the border information from the specified file"""
     json_str = open(filename).read()
     info = json.loads(json_str)
     return info
 
 def load_zone_data(tree, directory):
+    """Restores zone data from the specified directory to the tree."""
 
     # build a list of all of the node IDs in the tree
     nodes = dict()
@@ -152,6 +168,7 @@ def load_zone_data(tree, directory):
         nodes[node_id].insert_direct(datum)
 
 def save_zone_data(tree, directory):
+    """Saves zone data from the tree to the specified directory"""
 
     leaves = tree.get_leaves()
     zone_id = leaves[0].zone_id
