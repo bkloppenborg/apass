@@ -8,7 +8,9 @@ import re
 import json
 from copy import copy
 
+# global configuration settings for the APASS Project
 apass_save_dir = '/home/data/apass-test/'
+min_num_observations = 3
 
 # FRED files have the following format:
 ## STANDARD MAGNITUDES ONLY

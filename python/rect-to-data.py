@@ -16,6 +16,9 @@ from quadtree_types import *
 # parallel processing
 import multiprocessing as mp
 
+# numpy array manipulation
+import numpy.lib.recfunctions as nprf
+
 # The output looks like this
 ##  Name    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs       filt  mag  err
 #0020131545  11.198035  0.477 -32.933803  0.396    3   12 12.828  0.931 13.758 13.245 12.593 12.471  0.159  0.164  0.039  0.036  0.088  0.289
@@ -31,6 +34,10 @@ def summarize_data(container):
     data = container.data
     dtype={'names': apass.fredbin_col_names,'formats': apass.fredbin_col_types}
     data = np.asarray(container.data, dtype=dtype)
+
+    # add a boolean column to serve as a flag for whether or not a given datum should be used
+    tmp = np.zeros(len(data))
+    data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
 
     # return an empty string for containers with no data.
     if len(data) == 0:
@@ -54,21 +61,46 @@ def summarize_data(container):
     y = data['ccdy'] - center
     ccd_radius_2 = x*x + y*y
 
-    # filter out the measurements outside of that radius
-    #data = data[ccd_radius_2 < radius_2]
+    #
+    # apply various filtering to determine when we set the 'use_data' column to true
+    filter_ids = set(data['filter_id'])
 
-    # If no observations passed the filtering stage, return an empty string
-    if len(data) == 0:
+    # filter by CCD radius these data are always used
+    indexes = np.where(ccd_radius_2 < radius_2)
+    data['use_data'][indexes] = True
+
+    # if the radius test caused a filter to have fewer than N observations, restore
+    # all of the measurements for that filter_id
+    for filter_id in filter_ids:
+        indexes = np.where(data['filter_id'] == filter_id)
+        temp = data[indexes]
+        if sum(temp['use_data']) < apass.min_num_observations:
+            data['use_data'][indexes] = True
+
+    # If no observations passed the filtering stage, we have a serious problem.
+    # Print out a notification and return an empty string. We'll have to let the user
+    # figure out what to do.
+    if sum(data['use_data']) == 0:
+        zone_id = data['zone_id'][0]
+        node_id = data['node_id'][0]
+        container_id = data['container_id'][0]
+        print("WARNING: No measurements passed filtering for zone %i node %i container %i" % (zone_id, node_id, container_id))
         return ""
 
     # compute the magnitudes
     mags = dict()
-    filters = set(data['filter_id'])
-    for filter in filters:
-        temp = data[data['filter_id'] == filter]
+    for filter_id in filter_ids:
+        # extract known-good measurements for this filter
+        temp = data[(data['filter_id'] == filter_id) & (data['use_data'] == True)]
+        temp = data[indexes]
         num_obs = len(temp)
+        # compute the average and standard deviation for the magnitude.
+        # NOTE: Using standard error propigation methods, e.g.
+        #        mag_sig = sqrt(sum(error_i^2) / N
+        #       double-counts the nightly photometric (Poisson) error.
+        #       Arne indicates we should instead use std(mag) to avoid this problem
         mag = average(temp['xmag1'])
-        mag_sig = sqrt(sum(temp['xerr1']**2)) / num_obs
+        mag_sig = std(temp['xmag1'])
         mags[filter] = {'mag': mag, 'sig': mag_sig}
 
     # compute the number of observations and number of nights that made it through filtering
