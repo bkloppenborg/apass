@@ -55,7 +55,7 @@ def summarize_data(container):
     ccd_radius_2 = x*x + y*y
 
     # filter out the measurements outside of that radius
-    data = data[ccd_radius_2 < radius_2]
+    #data = data[ccd_radius_2 < radius_2]
 
     # If no observations passed the filtering stage, return an empty string
     if len(data) == 0:
@@ -66,8 +66,9 @@ def summarize_data(container):
     filters = set(data['filter_id'])
     for filter in filters:
         temp = data[data['filter_id'] == filter]
+        num_obs = len(temp)
         mag = average(temp['xmag1'])
-        mag_sig = std(temp['xmag1'])
+        mag_sig = sqrt(sum(temp['xerr1']**2)) / num_obs
         mags[filter] = {'mag': mag, 'sig': mag_sig}
 
     # compute the number of observations and number of nights that made it through filtering
@@ -83,22 +84,64 @@ def summarize_data(container):
     output = (prefix_fmt) % (name, ra, ra_sig, dec, dec_sig, num_nights, num_observations)
     # now follow up with magnitudes and errors. Note that APASS splits them as
     #  (mag1, ..., magN, err1, ..., errN)
+
+    out_mags = []
+    out_mag_sigs = []
+    for filter_id in range(1, apass.num_filters + 1):
+
+        # The existing APASS pipeline computes the six output filters
+        # as follows:
+        # index | out <- in
+        #   1 <- 3
+        #   2 <- (2 - 3)
+        #   3 <- 2
+        #   4 <- 8
+        #   5 <- 9
+        #   6 <- 10
+        # we mirror this here
+        if filter_id == 1:
+            mag, mag_sig = read_mags(mags, 3)
+        elif filter_id == 2:
+            mag2, mag2_sig = read_mags(mags, 2)
+            mag3, mag3_sig = read_mags(mags, 3)
+
+            if mag2 == 99.999 or mag3 == 99.999:
+                mag = 99.999
+                mag_sig = 99.999
+            else:
+                mag = mag2 - mag3
+                mag_sig = sqrt(mag2_sig**2 + mag3_sig**2)
+        elif filter_id == 3:
+            mag, mag_sig = read_mags(mags, 2)
+        elif filter_id == 4:
+            mag, mag_sig = read_mags(mags, 8)
+        elif filter_id == 5:
+            mag, mag_sig = read_mags(mags, 9)
+        elif filter_id == 6:
+            mag, mag_sig = read_mags(mags, 10)
+
+        out_mags.append(mag)
+        out_mag_sigs.append(mag_sig)
+
+    # write out the magnitudes
     for filter_id in range(0, apass.num_filters):
-        mag = 99.999
-        if filter_id in mags:
-            mag = mags[filter_id]['mag']
+        output += " " + (mag_fmt) % (out_mags[filter_id])
 
-        output += " " + (mag_fmt) % (mag)
-
+    # and the corresponding uncertainties
     for filter_id in range(0, apass.num_filters):
-        mag_sig = 99.999
-        if filter_id in mags:
-            mag_sig = mags[filter_id]['sig']
-
-        output += " " + (mag_fmt) % (mag_sig)
+        output += " " + (mag_fmt) % (out_mag_sigs[filter_id])
 
     return output
 
+def read_mags(mags_dict, filter_id):
+    mag = 99.999
+    mag_sig = 99.999
+
+    if filter_id in mags_dict:
+        mag = mags_dict[filter_id]['mag']
+        mag_sig = mags_dict[filter_id]['sig']
+
+    return [mag, mag_sig]
 
 def zone_to_data(zone_container_filename):
     """Processes all of the rectangles found in zone. Zone should be a valid subdirectory
@@ -129,8 +172,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Converts a containerized zone into APASS photometric output")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=1)
-    parser.add_argument('--debug', type=bool, help="Run in debug mode", default=False)
     parser.add_argument('input', nargs='+')
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help="Run in debug mode")
     args = parser.parse_args()
 
     # run in debug mode
