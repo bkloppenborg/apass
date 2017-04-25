@@ -68,8 +68,16 @@ After you have this, you can build as:
 This will compile the `libsla_f.a` library and place it in the `build`
 directory.
 
-# Build instructions
+# Build and installation instructions
+
+To build and install the software to `/usr/local` (CMake's default), simply:
 
     cd build
     cmake ..
     make
+    sudo make install
+
+To change the output directory of the installation, specify
+`-DCMAKE_INSTALL_PREFIX=/path/to/installation/directory` at cmake time.
+If you simply want to use the built binaries, look in subdirectories of `build`
+after running `make` (e.g. `build/fortran/filtran`)
