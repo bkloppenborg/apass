@@ -24,6 +24,8 @@ import numpy.lib.recfunctions as nprf
 #0020131545  11.198035  0.477 -32.933803  0.396    3   12 12.828  0.931 13.758 13.245 12.593 12.471  0.159  0.164  0.039  0.036  0.088  0.289
 
 def summarize_data(container):
+    """Parses the measurements contained within a container and generates a
+    string summarizing the data."""
 
     # A rectangle file should contain data on precisely one star take in
     # multiple photmetric filters.
@@ -166,6 +168,7 @@ def summarize_data(container):
     return output
 
 def read_mags(mags_dict, filter_id):
+    """Reads the magnitude and error from the dictionary for the specified filter."""
     mag = 99.999
     mag_sig = 99.999
 

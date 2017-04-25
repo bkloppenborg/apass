@@ -5,6 +5,7 @@ import numpy
 from apass import *
 
 def main():
+    """Exports a .fredbin file to text"""
 
     parser = argparse.ArgumentParser(description='Merges .fred photometric files')
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")

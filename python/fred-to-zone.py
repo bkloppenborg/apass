@@ -20,11 +20,7 @@ sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
 from filelock import FileLock
 
 def fred_to_zone_func(filename):
-    """Processes an APASS FRED file into zones using data contained in the tree
-
-    tree_file --- the full path to a JSON file containing tree generated using make-zones.py
-    filestore --- a reference to a FileStore object
-    filename --- the APASS FRED file to process"""
+    """Processes an APASS FRED file into zones using data contained in the tree"""
 
     zone_dict = {}
 

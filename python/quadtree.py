@@ -48,6 +48,7 @@ class Rect(dict):
         return Rect(x_min, x_max, y_min, y_max)
 
     def get_corners(self):
+        """Returns a list of the corners stored as (x,y) pairs."""
         corners = []
         corners.append((self.x_min, self.y_min))
         corners.append((self.x_min, self.y_max))
@@ -56,6 +57,7 @@ class Rect(dict):
         return corners
 
     def get_center(self):
+        """Returns the center location of the rectangle as an (x,y) pair."""
         x = self.x_min + (self.x_max - self.x_min) / 2
         y = self.y_min + (self.y_max - self.y_min) / 2
         return (x,y)
@@ -213,6 +215,7 @@ class QuadTreeNode(dict):
             return self.parent.find_node_containing(x,y)
 
     def get_leaves(self):
+        """Returns a list of all of the leaves contained in the tree."""
         leaves = []
         func = partial(get_leaves, leaves=leaves)
         self.runFunc(func)
@@ -234,6 +237,7 @@ class QuadTreeNode(dict):
         raise RuntimeError("Could not find a node containing the point (%f, %f)" % (x,y))
 
     def is_leaf(self):
+        """Returns true if the node is a leaf."""
         return not self.has_children()
 
     def is_root(self):
@@ -301,6 +305,7 @@ def restore_parent_to_children(node):
         child.parent = node
 
 def get_leaves(node, leaves=None):
+    """Helper function to return the leaves below this specified node."""
     if leaves is None:
         raise ValueError("You must specify leaves via keyword using functools.partial")
     if node.is_leaf():

@@ -74,6 +74,7 @@ def zone_to_rects(filename):
     QuadTreeNode.to_file(zone_tree, filename_no_ext + "-zone.json")
 
 def number_containers(tree, zone_id=0):
+    """Assigns a unique ID to each container."""
 
     node_id = 0
     leaves = tree.get_leaves()

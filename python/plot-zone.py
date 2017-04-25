@@ -12,6 +12,7 @@ from quadtree import *
 from quadtree_types import *
 
 def plot_containers(leaf, axes):
+    """Adds patches corresponding to container borders"""
 
     for container in leaf.containers:
         rect = container.rect
@@ -23,6 +24,7 @@ def plot_containers(leaf, axes):
         axes.add_patch(patches.Rectangle((x,y), dx, dy, color="red", fill=False))
 
 def main():
+    """Plots all data in an APASS zone and optionally displays container boundaries."""
 
     parser = argparse.ArgumentParser(description='Plots a zone file and its data')
     parser.add_argument('input', nargs='+', help="Zone JSON files to be plotted")

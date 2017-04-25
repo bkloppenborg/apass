@@ -11,6 +11,7 @@ import apass
 from apass_types import *
 
 def main():
+    """Moves star measurements that straddle zone boundaries into a single zone."""
 
     parser = argparse.ArgumentParser(description='Resolves stars residing in two zones by moving data.')
 
@@ -130,7 +131,7 @@ def main():
 
                 for adj_container in adj_containers:
                     # generate nice output
-                    name = apass.name_rect(adj_container.zone_id, adj_container.node_id,
+                    name = apass.name_container(adj_container.zone_id, adj_container.node_id,
                                            adj_container.container_id)
                     print("  merging %s " % (name))
 
@@ -161,6 +162,7 @@ def main():
 
 
 def wrap_bounds(ra, dec):
+    """Wraps (ra,dec) coordinates at boundaries."""
     if dec < -90 or dec > 90:
         ra = (ra + 180) % 360
         dec = 90 - (dec + 90) % 180

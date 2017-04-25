@@ -5,6 +5,7 @@ import apass
 import os
 
 class RectContainer(dict):
+    """A class which implements a storage container with rectangular boundaries."""
 
     def __init__(self, x, y, data, zone_id=-1, node_id=-1, container_id=-1):
         dict.__init__(self)
@@ -28,6 +29,7 @@ class RectContainer(dict):
             self.append_data(data)
 
     def contains(self, x, y):
+        """Determines if the point (x,y) is contained within this container's bounds"""
         return self.rect.contains(x,y)
 
     @staticmethod
@@ -153,6 +155,8 @@ class RectLeaf(QuadTreeNode):
         self.containers.append(container)
 
     def insert_direct(self, data):
+        """Insert data directly into the container. Used in restoring this object
+        from a save file."""
             container_id = data['container_id']
 
             for container in self.containers:
@@ -160,6 +164,7 @@ class RectLeaf(QuadTreeNode):
                     container.append_data(data)
 
     def load_data(self, data):
+        """Restores the specified data to the container. Used in object restoration."""
         if self.zone_id < 0 and self.node_id < 0:
             raise RuntimeError("Cannot load data for an uninitialized node!")
 

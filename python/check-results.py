@@ -7,25 +7,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def main():
-    """Performs a zipper-style comparison between two data files."""
+    """Performs a zipper-style comparison between two data files. The input
+    data do not need to be sorted."""
+
     parser = argparse.ArgumentParser(
         description="Converts a containerized zone into APASS photometric output")
-    parser.add_argument('input', nargs='+')
+    parser.add_argument('filstat-file', help="Output file from Fortran (filtstat) pipeline")
+    parser.add_argument('python-file', help="Output file from the Python pipeline")
     args = parser.parse_args()
 
+    # Specify the maximum matching distance
     max_distance = 4.0 / (60 * 60)
     max_distance_2 = max_distance * max_distance
 
-    fileA_name = args.input[0]
-    fileB_name = args.input[1]
-
+    # Read in the files and sort their data first by RA, then by DEC.
+    fileA_name = args.filstat_file
     fileA = apass.read_data(fileA_name)
-    fileB = apass.read_data(fileB_name)
-
     fileA.sort(order=['ra', 'dec'])
-    fileB.sort(order=['ra', 'dec'])
-
     print("Read in %i lines from A" % (len(fileA)))
+    fileB_name = args.python_file
+    fileB = apass.read_data(fileB_name)
+    fileB.sort(order=['ra', 'dec'])
     print("Read in %i lines from B" % (len(fileB)))
 
     # prepare for doing the zipper comparison
