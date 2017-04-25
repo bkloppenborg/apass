@@ -53,3 +53,5 @@ add_subdirectory("aahlib")
 #gfortran -o filtran filtran.f /raid/aavsonet/sources/aahlib/liba.a \
 #-lplotsub -ldevices -lutils -lsla_f -L/usr/local/lib \
 #-L/usr/X11R6/lib -lX11
+
+install(TARGETS hepp hphot filepp filstat filtran DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
