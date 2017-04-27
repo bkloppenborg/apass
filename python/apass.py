@@ -11,6 +11,7 @@ from copy import copy
 # global configuration settings for the APASS Project
 apass_save_dir = '/home/data/apass-test/'
 min_num_observations = 3
+num_filters = 6
 
 # FRED files have the following format:
 ## STANDARD MAGNITUDES ONLY
@@ -27,13 +28,13 @@ fredbin_col_names.extend(fredbin_extra_cols)
 fredbin_col_types = copy(fred_col_types)
 fredbin_extra_types = ['int32', 'int32', 'int32']
 fredbin_col_types.extend(fredbin_extra_types)
+fredbin_savetxt_fmt = ['%03.6f', '%03.6f', '%02.6f', '%02.6f', '%d', '%d', '%02.6f', '%02.6f', '%6i', '%6i', '%6i', '%i', '%02.6f', '%02.6f', '%02.6f', '%6i', '%6i', '%6i', '%6i', '%6i']
 
 # data format for output data
 data_col_names = ['name', 'ra', 'ra_err', 'dec', 'dec_err', 'nobs', 'mobs', 'mag1', 'mag2', 'mag3', 'mag4', 'mag5', 'mag6', 'mag_err1', 'mag_err2', 'mag_err3', 'mag_err4', 'mag_err5', 'mag_err6']
 data_col_types = ['int', 'float64', 'float64', 'float64', 'float64', 'int', 'int', \
                   'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32']
 
-num_filters = 6
 
 def read_data(filename):
     """Reads in an output data file (e.g. a .dat file)"""
