@@ -157,11 +157,11 @@ class RectLeaf(QuadTreeNode):
     def insert_direct(self, data):
         """Insert data directly into the container. Used in restoring this object
         from a save file."""
-            container_id = data['container_id']
+        container_id = data['container_id']
 
-            for container in self.containers:
-                if container.container_id == container_id:
-                    container.append_data(data)
+        for container in self.containers:
+            if container.container_id == container_id:
+                container.append_data(data)
 
     def load_data(self, data):
         """Restores the specified data to the container. Used in object restoration."""
