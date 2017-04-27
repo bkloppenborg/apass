@@ -51,6 +51,7 @@ def fred_to_zone_func(filename):
         datum['zone_id'] = zone_id
         zone_dict[zone_id].append(datum)
 
+
     # Write out the data being sure to lock all related files prior to opening
     for zone_id, data in zone_dict.iteritems():
         zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
@@ -69,7 +70,7 @@ def main():
     parser = argparse.ArgumentParser(description='Parses .fred files into zone .fredbin files')
     #parser.add_argument('outdir', help="Directory into which .fredbin files will be generated")
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
-    parser.add_argument('-j','--jobs', type=int, help="Parallel jobs")
+    parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
     parser.set_defaults(jobs=1)

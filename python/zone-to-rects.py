@@ -53,7 +53,7 @@ def zone_to_rects(filename):
             return
 
 
-    # prepare the save the data. 
+    # prepare the save the data.
     # the zone file's name
     filename_no_ext = os.path.splitext(filename)[0]
 
@@ -95,9 +95,9 @@ def number_containers(tree, zone_id=0):
             container.container_id = container_id
 
             # number the data with the corresponding (node_id, container_id)
-            for i in range(0, len(container.data)):
-                container.data[i]['node_id'] = node_id
-                container.data[i]['container_id'] = container_id
+            for datum in container.data:
+                datum['node_id'] = node_id
+                datum['container_id'] = container_id
 
             # increment the container ID
             container_id += 1
@@ -219,7 +219,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Merges .fred photometric files')
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
-    parser.add_argument('-j','--jobs', type=int, help="Parallel jobs")
+    parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
     parser.set_defaults(jobs=1)

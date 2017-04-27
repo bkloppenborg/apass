@@ -2,7 +2,7 @@
 
 import argparse
 import numpy
-from apass import *
+import apass
 
 def main():
     """Exports a .fredbin file to text"""
@@ -13,8 +13,8 @@ def main():
     args = parser.parse_args()
 
     for filename in args.input:
-        data = read_fredbin(filename)
-        numpy.savetxt(filename + ".txt", data)
+        data = apass.read_fredbin(filename)
+        numpy.savetxt(filename + ".txt", data, fmt=apass.fredbin_savetxt_fmt)
 
 
 if __name__ == "__main__":

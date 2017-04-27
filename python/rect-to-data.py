@@ -19,6 +19,11 @@ import multiprocessing as mp
 # numpy array manipulation
 import numpy.lib.recfunctions as nprf
 
+# suppress FutureWarning from np.average
+import warnings
+warnings.simplefilter(action = "ignore", category = FutureWarning)
+
+
 # The output looks like this
 ##  Name    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs       filt  mag  err
 #0020131545  11.198035  0.477 -32.933803  0.396    3   12 12.828  0.931 13.758 13.245 12.593 12.471  0.159  0.164  0.039  0.036  0.088  0.289
@@ -103,7 +108,7 @@ def summarize_data(container):
         #       Arne indicates we should instead use std(mag) to avoid this problem
         mag = average(temp['xmag1'])
         mag_sig = std(temp['xmag1'])
-        mags[filter] = {'mag': mag, 'sig': mag_sig}
+        mags[filter_id] = {'mag': mag, 'sig': mag_sig}
 
     # compute the number of observations and number of nights that made it through filtering
     num_observations = len(data)
@@ -206,7 +211,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Converts a containerized zone into APASS photometric output")
-    parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=1)
+    parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('input', nargs='+')
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
