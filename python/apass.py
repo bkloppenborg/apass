@@ -150,23 +150,34 @@ def load_border_info(filename):
 def load_zone_data(tree, directory):
     """Restores zone data from the specified directory to the tree."""
 
-    # build a list of all of the node IDs in the tree
-    nodes = dict()
+    # build a nested dictionary that gives us direct access to the
+    # underlying containers. Indexing shall be
+    #  container = nodes[node_id][container_id]
+    node_dict = dict()
     leaves = tree.get_leaves() # these will be of type RectLeaf
-
-    # put a reference to the leaf into a dictionary for faster indexing
     for leaf in leaves:
         node_id = leaf.node_id
-        nodes[node_id] = leaf
 
-    # read in the data and assign it to the leaves
+        container_dict = dict()
+        for container in leaf.containers:
+            container_id = container.container_id
+
+            container_dict[container_id] = container
+
+        node_dict[node_id] = container_dict
+
+    # load the data
     zone_id = leaves[0].zone_id
     filename = directory + '/' + name_zone_container_file(zone_id)
     data = read_fredbin(filename)
+
+    # insert the data *directly* into the container, bipassing normal
+    # restoration methods.
     for i in range(0, len(data)):
         datum = data[i]
         node_id = datum['node_id']
-        nodes[node_id].insert_direct(datum)
+        container_id = datum['container_id']
+        node_dict[node_id][container_id].append_data(datum)
 
 def save_zone_data(tree, directory):
     """Saves zone data from the tree to the specified directory"""

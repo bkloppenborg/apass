@@ -154,23 +154,21 @@ class RectLeaf(QuadTreeNode):
             container.merge(other)
         self.containers.append(container)
 
-    def insert_direct(self, data):
-        """Insert data directly into the container. Used in restoring this object
-        from a save file."""
-        container_id = data['container_id']
-
-        for container in self.containers:
-            if container.container_id == container_id:
-                container.append_data(data)
-
     def load_data(self, data):
         """Restores the specified data to the container. Used in object restoration."""
         if self.zone_id < 0 and self.node_id < 0:
             raise RuntimeError("Cannot load data for an uninitialized node!")
 
+        # build a dictionary of container ID -> containers
+        container_dict = dict()
+        for container in self.containers:
+            container_id = container.container_id
+            container_dict[container_id] = container
+
+        # insert the  data
         for i in range(0, len(data)):
             container_id = data[i]['container_id']
-            self.containers[container_id].append_data(data[i])
+            container_dict[container_id].append_data(data[i])
 
     def save_data(self, filehandle):
         """Saves the data in this node to the file handle savefile"""
