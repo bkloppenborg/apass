@@ -78,24 +78,24 @@ def main():
 
             # now that we have a RectContainer, find adjacent containers via the global tree
             # and subsequent zone trees:
-            adj_zones = []
+            adj_zone_ids = []
             for x,y in container.get_corners():
                 # wrap the (x,y) values into 0 <= x <= 360, -90 < y < 90
                 x,y = wrap_bounds(x, y)
 
                 # find the adjacent zone, skip it if we've been there recently
                 adj_zone = global_tree.find_leaf(x,y)
-                if adj_zone == zone or adj_zone in adj_zones:
-                    continue
 
                 if adj_zone is None:
                     raise RuntimeError("Could not find zone affiliated with %d %d" % (x,y))
 
+                adj_zone_id = adj_zone.node_id
+                if adj_zone_id == zone_id or adj_zone_id in adj_zone_ids:
+                    continue
 
-                adj_zones.append(adj_zone)
+                adj_zone_ids.append(adj_zone_id)
 
                 # load the adjacent zone tree
-                adj_zone_id = adj_zone.node_id
                 adj_zone_file = save_dir + apass.name_zone_json_file(adj_zone_id)
 
                 # verify that the adjacent zone contains data
