@@ -91,10 +91,7 @@ def main():
         pool = mp.Pool(args.jobs)
 
         # farm out the jobs and wait for the result
-        result = pool.map_async(fred_to_zone_func, args.input)
-        result.get()
-
-        # wait for the pool to complete
+        result = pool.imap(fred_to_zone_func, args.input)
         pool.close()
         pool.join()
 

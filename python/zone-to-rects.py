@@ -238,10 +238,7 @@ def main():
         pool = Pool(args.jobs)
 
         # farm out the work
-        result = pool.map_async(zone_to_rects, args.input)
-        result.get()
-
-        # close out the computation
+        result = pool.imap(zone_to_rects, args.input)
         pool.close()
         pool.join()
 

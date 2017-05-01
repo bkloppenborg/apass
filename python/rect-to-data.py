@@ -6,6 +6,7 @@ import os
 from numpy import *
 import glob
 import numpy as np
+import time
 
 # APASS-specific things
 import apass
@@ -217,6 +218,7 @@ def main():
                         help="Run in debug mode")
     args = parser.parse_args()
 
+    start = time.time()
     # run in debug mode
     if args.debug:
         for zonefile in args.input:
@@ -224,9 +226,12 @@ def main():
     # run in production mode
     else:
         pool = mp.Pool(args.jobs)
-        result = pool.map_async(zone_to_data, args.input)
+        result = pool.imap(zone_to_data, args.input)
         pool.close()
         pool.join()
+
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 if __name__ == "__main__":
     main()
