@@ -13,9 +13,9 @@ import apass
 
 def merge_polar_zones(node):
     """Replaces QuadTree nodes that reside completely within the polar zones
-    with a IDLeaf node with fileid = [0=North,1=South]"""
+    with a IDLeaf node with fileid = [1=North,2=South]"""
 
-    north = 80
+    north = 88
     south = -1 * north
 
     for i in range(len(node.children) - 1, -1, -1):
@@ -24,10 +24,10 @@ def merge_polar_zones(node):
 
         if rect.y_min == -90 and rect.y_max < south:
             rect = Rect(0, 360, -90, rect.y_max)
-            node.children[i] = IDLeaf(rect, child.depth, node_id=1, parent=node)
+            node.children[i] = IDLeaf(rect, child.depth, node_id=2, parent=node)
         elif rect.y_max == 90 and rect.y_min > north:
             rect = Rect(0, 360, rect.y_min, 90)
-            node.children[i] = IDLeaf(rect, child.depth, node_id=0, parent=node)
+            node.children[i] = IDLeaf(rect, child.depth, node_id=1, parent=node)
 
 def export_rect(node):
     """Export leaf rectangles to the global rects variable"""
@@ -68,13 +68,13 @@ def main():
     args = parser.parse_args()
 
     global fileid # used in quadtree_types.py
-    fileid = 2 # reserve 0, 1 for the poles
+    fileid = 3 # reserve 1, 2 for the poles
 
     zonefile = apass.apass_save_dir + '/global.json'
 
     # subdivde the sphere to this depth:
-    depth = 6 # dRA = 5.625 dDEC = 2.8125
-    #depth = 7 # dRA = 2.8125 dDEC = 1.40625
+    #depth = 6 # dRA = 5.625 dDEC = 2.8125
+    depth = 7 # dRA = 2.8125 dDEC = 1.40625
 
     # build the quadtree, then merge the zones
     bounds = Rect(0, 360, -90, 90)
