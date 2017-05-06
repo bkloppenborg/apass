@@ -55,7 +55,7 @@ class RectContainer(dict):
     def append_data(self, data):
         """Appends the specified data to this object"""
         self.data.append(data)
-        self.num_data += 1
+        self.num_data = len(self.data)
 
     def merge(self, other, mark_moved=False):
         """Merges two RectContainer Instances, growing their bounding rectangles
@@ -77,6 +77,8 @@ class RectContainer(dict):
             other.moved_zone_id = self.zone_id
             other.moved_node_id = self.node_id
             other.moved_container_id = self.container_id
+
+        self.num_data = len(self.data)
 
     def overlaps(self, other):
         """Determines if this RectContainer overlaps with another RectContainer
