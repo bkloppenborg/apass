@@ -9,7 +9,8 @@ import json
 from copy import copy
 
 # global configuration settings for the APASS Project
-apass_save_dir = '/home/data/apass-test/'
+#apass_save_dir = '/home/data/apass-test/'
+apass_save_dir = '/home/data/dr9-test/'
 ccd_radius = 2500
 min_num_observations = 3
 num_filters = 6
@@ -75,7 +76,7 @@ def get_coords(datum):
     """Extracts the coordinates from a single datum and returns (ra', dec') = (ra*cos(dec), dec)"""
     dec = datum['dec']
     ra  = datum['ra']
-    return get_coords_raw(ra, dec)
+    return [ra, dec]
 
 # store information in the following format
 #  zXXXXX.fredbin - zone file
