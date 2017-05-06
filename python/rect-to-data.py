@@ -58,10 +58,10 @@ def summarize_data(container):
     dec = average(data['dec'])
     dec_sig = std(data['dec'])
 
-    # filter out measurements outside of a 2048 - 100 = 1948 radius from
-    # the center of the CCD. (this is for 4096x4096 images only)
+    # filter out measurements outside of a specific radius from the center
+    # of the CCD
     center = 2048
-    radius = (2048-100)**2
+    radius = (apass.ccd_radius)**2
     radius_2 = radius*radius
 
     # look up the (x,y) location relative to the center of the CCD

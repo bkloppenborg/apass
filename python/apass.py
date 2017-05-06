@@ -10,8 +10,17 @@ from copy import copy
 
 # global configuration settings for the APASS Project
 apass_save_dir = '/home/data/apass-test/'
+ccd_radius = 2500
 min_num_observations = 3
 num_filters = 6
+
+# Number of times the sphere is subdivided
+global_depth = 4
+#global_depth = 6 # dRA = 5.625 dDEC = 2.8125
+#global_depth = 7 # dRA = 2.8125 dDEC = 1.40625
+# number of times a zone is subdivided
+zone_depth = 4
+
 
 # FRED files have the following format:
 ## STANDARD MAGNITUDES ONLY

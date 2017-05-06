@@ -18,6 +18,7 @@ class RectContainer(dict):
         self.moved_zone_id = -1
         self.moved_node_id = -1
         self.moved_container_id = -1
+        self.num_data = 0
 
         dr = 2. / (60 * 60) # 2 arcsecond in degrees
         dx = dr * cos(y * pi /  180)
@@ -47,12 +48,14 @@ class RectContainer(dict):
         container.moved_zone_id = dict_['moved_zone_id']
         container.moved_node_id = dict_['moved_node_id']
         container.moved_container_id = dict_['moved_container_id']
+        container.num_data = dict_['num_data']
         container.rect = Rect.from_dict(dict_['rect'])
         return container
 
     def append_data(self, data):
         """Appends the specified data to this object"""
         self.data.append(data)
+        self.num_data += 1
 
     def merge(self, other, mark_moved=False):
         """Merges two RectContainer Instances, growing their bounding rectangles
@@ -100,7 +103,7 @@ class RectLeaf(QuadTreeNode):
 
     def __init__(self, rect, depth, parent=None, zone_id=-1, node_id=-1):
         QuadTreeNode.__init__(self, rect, depth, parent)
- 
+
         self.zone_id = zone_id
         self.node_id = node_id
         self.containers = []

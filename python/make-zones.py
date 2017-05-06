@@ -72,14 +72,10 @@ def main():
 
     zonefile = apass.apass_save_dir + '/global.json'
 
-    # subdivde the sphere to this depth:
-    #depth = 6 # dRA = 5.625 dDEC = 2.8125
-    depth = 7 # dRA = 2.8125 dDEC = 1.40625
-
     # build the quadtree, then merge the zones
     bounds = Rect(0, 360, -90, 90)
     tree = QuadTreeNode(bounds, 0)
-    tree.split_until(depth, leafClass=IDLeaf)
+    tree.split_until(apass.global_depth, leafClass=IDLeaf)
     tree.runFunc(merge_polar_zones)
 
     if args.plot:
