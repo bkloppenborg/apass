@@ -21,6 +21,8 @@ global_depth = 6 # dRA = 5.625 dDEC = 2.8125
 # number of times a zone is subdivided
 zone_depth = 4
 
+polar_zone_cutoff = 88 # |dec| greater than this are considered part of the polar zone
+
 
 # FRED files have the following format:
 ## STANDARD MAGNITUDES ONLY

@@ -15,7 +15,7 @@ def merge_polar_zones(node):
     """Replaces QuadTree nodes that reside completely within the polar zones
     with a IDLeaf node with fileid = [1=North,2=South]"""
 
-    north = 88
+    north = apass.polar_zone_cutoff
     south = -1 * north
 
     for i in range(len(node.children) - 1, -1, -1):
