@@ -125,12 +125,12 @@ def main():
     plt.colorbar(im)
 
     ave_ax = plt.subplot(gs[1, 0], sharex=min_ax, sharey=min_ax)
-    im = ave_ax.imshow(ave_image, extent=[0, 360, -90, 90])
+    im = ave_ax.imshow(ave_image, extent=[0, 360, -90, 90], vmin=0, vmax=50)
     ave_ax.set_title("Average number of measurements")
     plt.colorbar(im)
 
     max_ax = plt.subplot(gs[2, 0], sharex=min_ax, sharey=min_ax)
-    im = max_ax.imshow(max_image, extent=[0, 360, -90, 90])
+    im = max_ax.imshow(max_image, extent=[0, 360, -90, 90], vmin=0, vmax=100)
     max_ax.set_title("Maximum number of measurements")
     plt.colorbar(im)
 
