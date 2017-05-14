@@ -9,19 +9,24 @@ import json
 from copy import copy
 
 # global configuration settings for the APASS Project
-#apass_save_dir = '/home/data/apass-test/'
-apass_save_dir = '/home/data/dr9-test/'
+apass_save_dir = '/home/data/apass-test/'
+#apass_save_dir = '/home/data/dr9-test/'
 ccd_radius = 2500
 min_num_observations = 3
 num_filters = 6
 
 # Number of times the sphere is subdivided
+# this should be somewhat well matched to the polar_zone_cutoff below
 global_depth = 6 # dRA = 5.625 dDEC = 2.8125
 #global_depth = 7 # dRA = 2.8125 dDEC = 1.40625
 # number of times a zone is subdivided
 zone_depth = 4
 
 polar_zone_cutoff = 88 # |dec| greater than this are considered part of the polar zone
+
+# (static) IDs for the polar zones. Don't change these
+south_zone_id = 0
+north_zone_id = 1
 
 
 # FRED files have the following format:

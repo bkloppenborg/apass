@@ -11,23 +11,32 @@ from quadtree_types import *
 
 import apass
 
-def merge_polar_zones(node):
+def merge_polar_zones(root_node):
     """Replaces QuadTree nodes that reside completely within the polar zones
     with a IDLeaf node with fileid = [1=North,2=South]"""
 
     north = apass.polar_zone_cutoff
     south = -1 * north
 
-    for i in range(len(node.children) - 1, -1, -1):
-        child = node.children[i]
-        rect = child.rect
+    leaves = root_node.get_leaves()
 
-        if rect.y_min == -90 and rect.y_max < south:
-            rect = Rect(0, 360, -90, rect.y_max)
-            node.children[i] = IDLeaf(rect, child.depth, node_id=2, parent=node)
-        elif rect.y_max == 90 and rect.y_min > north:
-            rect = Rect(0, 360, rect.y_min, 90)
-            node.children[i] = IDLeaf(rect, child.depth, node_id=1, parent=node)
+    for leaf in leaves:
+        rect = leaf.rect
+
+        if rect.y_min == -90 or rect.y_max < south:
+            leaf.node_id = apass.south_zone_id
+        elif rect.y_max == 90 or rect.y_min > north:
+            leaf.node_id = apass.north_zone_id
+
+def number_zones(root_node):
+
+    counter = max(apass.north_zone_id, apass.south_zone_id) + 1
+
+    leaves = root_node.get_leaves()
+    for leaf in leaves:
+        leaf.node_id = counter
+        counter += 1
+
 
 def export_rect(node):
     """Export leaf rectangles to the global rects variable"""
@@ -68,7 +77,7 @@ def main():
     args = parser.parse_args()
 
     global fileid # used in quadtree_types.py
-    fileid = 3 # reserve 1, 2 for the poles
+    fileid = apass.north_zone_id + 1 # skip over reserved IDs
 
     zonefile = apass.apass_save_dir + '/global.json'
 
@@ -76,7 +85,8 @@ def main():
     bounds = Rect(0, 360, -90, 90)
     tree = QuadTreeNode(bounds, 0)
     tree.split_until(apass.global_depth, leafClass=IDLeaf)
-    tree.runFunc(merge_polar_zones)
+    number_zones(tree)
+    merge_polar_zones(tree)
 
     if args.plot:
         plot_zones(tree)
