@@ -20,6 +20,7 @@ sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
 from filelock import FileLock
 
 def get_active_indices(i, j, stride):
+    """Returns list of indices selected from (i,j) in steps of stride in each direction."""
 
     global width
     global height
@@ -39,6 +40,13 @@ def get_active_indices(i, j, stride):
 
 
 def get_adjacent_zones(i, j):
+    """Returns zones that should be regarded as adjacent to the specified zone.
+
+    This function behaves as follows:
+     * A polar zone: Returns the entire adjacent row
+     * First row before/after a polar zone: Six adjacent zones that are not the polar zone
+     * All others: The eight zones surrounding the zone of interest
+    """
 
     global global_tree
     global height
@@ -123,6 +131,15 @@ def get_zone_from_coordinates(x,y):
     return global_tree.find_leaf(x,y)
 
 def load_zone(zone_id):
+    """Loads the tree, data, and border info file for the specified zone.
+    Returns this data as a dictionary keyed as follows:
+     * json_filename
+     * container_filename
+     * border_info_filename
+     * border_info
+     * tree
+     * loaded
+     * lock (a FileLock instance)"""
 
     #print(" Loading zone %i" % (zone_id))
 
@@ -165,6 +182,8 @@ def load_zone(zone_id):
     return zone_dict
 
 def save_zone(zone_dict):
+    """Saves the zone data to disk. The zone_dict format matches the
+    format found in load_zone above."""
 
     json_file        = zone_dict['json_filename']
     container_file   = zone_dict['container_filename']
@@ -236,6 +255,8 @@ def fix_zone_overlaps(zone_index):
 
         # find adjacent nodes which overlap with this container
         for c_x, c_y in corners:
+            c_x, c_y = wrap_bounds(c_x, c_y)
+
             adj_zone = global_tree.find_leaf(c_x, c_y)
             adj_zone_id = adj_zone.node_id
 
@@ -271,6 +292,16 @@ def fix_zone_overlaps(zone_index):
     save_zone(zone_dict)
     for key, value in adj_zone_dicts.iteritems():
         save_zone(value)
+
+def wrap_bounds(ra, dec):
+    """Wraps (ra,dec) coordinates at boundaries."""
+    if dec < -90 or dec > 90:
+        ra = (ra + 180) % 360
+        dec = 90 - (dec + 90) % 180
+    elif ra < 0 or ra > 360:
+        ra = (ra + 360) % 360
+
+    return ra, dec
 
 
 def main():
