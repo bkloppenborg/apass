@@ -99,7 +99,7 @@ def summarize_data(container):
     mags = dict()
     for filter_id in filter_ids:
         # extract known-good measurements for this filter
-        temp = data[(data['filter_id'] == filter_id) & (data['use_data'] == True)]
+        indexes = np.where((data['filter_id'] == filter_id) & (data['use_data'] == True))
         temp = data[indexes]
         num_obs = len(temp)
         # compute the average and standard deviation for the magnitude.
@@ -107,9 +107,14 @@ def summarize_data(container):
         #        mag_sig = sqrt(sum(error_i^2) / N
         #       double-counts the nightly photometric (Poisson) error.
         #       Arne indicates we should instead use std(mag) to avoid this problem
+        # If there is only one observation, copy the error.
         mag = average(temp['xmag1'])
-        mag_sig = std(temp['xmag1'])
-        mags[filter_id] = {'mag': mag, 'sig': mag_sig}
+        if num_obs > 1:
+            mag_sig = std(temp['xmag1'])
+        else:
+            mag_sig = temp['xerr1']
+
+        mags[filter_id] = {'mag': mag, 'sig': mag_sig, 'num': num_obs}
 
     # compute the number of observations and number of nights that made it through filtering
     num_observations = len(data)
@@ -159,6 +164,7 @@ def summarize_data(container):
             mag, mag_sig = read_mags(mags, 9)
         elif filter_id == 6:
             mag, mag_sig = read_mags(mags, 10)
+
 
         out_mags.append(mag)
         out_mag_sigs.append(mag_sig)
