@@ -51,6 +51,17 @@ data_col_names = ['name', 'ra', 'ra_err', 'dec', 'dec_err', 'nobs', 'mobs', 'mag
 data_col_types = ['int', 'float64', 'float64', 'float64', 'float64', 'int', 'int', \
                   'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32']
 
+def compare_fred_data(A, B):
+    """Compares two FRED entries stored as numpy structured arrays.
+    Returns True if they match identically, False otherwise."""
+
+    same_point = True
+
+    for key in fred_col_names:
+        if A[key] != B[key]:
+            same_point = False
+
+    return same_point
 
 def read_data(filename):
     """Reads in an output data file (e.g. a .dat file)"""
