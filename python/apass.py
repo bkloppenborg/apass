@@ -10,7 +10,7 @@ from copy import copy
 
 # global configuration settings for the APASS Project
 apass_save_dir = '/home/data/apass-test/'
-#apass_save_dir = '/home/data/dr9-test/'
+#apass_save_dir = '/2/home/kloppenb/dr9-test/'
 ccd_radius = 2500
 min_num_observations = 3
 num_filters = 6
