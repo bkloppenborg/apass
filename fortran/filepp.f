@@ -9,6 +9,7 @@ c  mod 07-Mar-2013 aah include ZS,Y
 c  mod 04-Nov-2016 aah use filelist
 c  mod 06-Nov-2016 aah use new epp file format
 c  note: hardcoded to ap=2 (rad=3) for now
+c  mod 18-Jun-2017 aah use filelist
 c
 c   Fortran 77 compatible
 c
@@ -32,7 +33,7 @@ c
 c
 c ***********************************************************************
       print *,'                      Program FILEPP version 2.0'
-      print *,'                         04-Nov-2016     '     
+      print *,'                         07-Mar-2017     '     
       print *
 c ************************************************************************
 c
@@ -47,7 +48,7 @@ c
       read (5,'(a)') pfile
 c format pfile:  eppfile resid_path
       open (unit=22,file=pfile,status='old')
-5     continue
+10    continue
         read (22,9000,end=999) eppfile,residpath
 9000    format(a14,2x,a15)
 c
@@ -148,9 +149,10 @@ c
         rowcol(i) = float(i)*100. - 150.
        enddo
 c
-c open input file
+c open input files
 c
       file2 = eppfile//".epp"
+      print *,'Processing file ',file2
       open(unit=2,file=file2,status='old')
       read (2,'(a)') fileid
       read (2,*)
@@ -175,15 +177,21 @@ c
 c loop over records in file
 c
 100   continue
-        read (2,9003,end=999) hjd,ra,dec,ifil,amass,
-     $   ccdx,ccdy,fwhmx,fwhmy,amax,sky,iap,
-     $   apmag,aperr,psfmag,psferr,photflag,
-     $   object,jd0,nfile,kset,kser,istar
-9003         format (f12.5,f12.7,f12.7,i5,f7.3,
+        iap = 3
+        read (2,9003,end=800) hjd,ra,dec,
+     $   ifil,amass,
+     $   ccdx,ccdy,fwhmx,fwhmy,
+     $   amax,sky,
+     $   apmag,aperr,psfmag,psferr,
+     $   photflag,object,
+     $   jd0,nfile,kset,kser,istar
+9003         format (f12.5,f12.7,f12.7,
+     $         i5,f7.3,
      $         f9.3,f9.3,f7.3,f7.3,
-     $         f8.1,f7.1,i5,16x,f8.4,f8.4,
-     $         f8.4,f8.4,80x,i5,a25,i6,1x,
-     $         a4,i5,i5,i7)
+     $         f8.1,f7.1,
+     $         32x,f8.4,f8.4,64x,2f8.4,
+     $         i5,a25,
+     $         i6,1x,a4,i5,i5,i7)
         do i=1,42
            if (ccdx.gt.rowcol(i).and.ccdx.lt.rowcol(i+1)) then
               i1 = i
@@ -213,7 +221,12 @@ c do bilinear interpolation from Numerical Recipies, page 96
      $         a4,i5,i5,i7,f8.4)
         goto 100
 c
+800     continue
+        close (2)
+        close (3)
+        goto 10
 999   continue
+      close (22)
       close (2)
       close (3)
       stop

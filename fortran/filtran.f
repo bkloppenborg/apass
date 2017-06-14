@@ -18,6 +18,7 @@ c mod 01-Nov-2009 aah to work with epp files
 c mod 18-Jun-2010 aah to use magnitudes instead of mag+multicolor
 c mod 25-Jan-2014 aah to use apass standard file or landolt standard file
 c mod 18-Dec-2014 aah to add zs,Y
+c mod 14-Jun-2017 aah for tera, 64bit SM
 c
       integer MAXSTARS,MAXC,MAXFILT,MAXFC
       PARAMETER (MAXSTARS = 70000)
@@ -330,7 +331,8 @@ c read in one star
      $  isetnew,istarnew
 901   format (f12.5,f12.7,f12.7,i5,f7.3,
      $  9x,9x,7x,7x,8x,7x,5x,f8.4,f8.4,
-     $  8x,8x,5x,6x,6x,6x,6x,5x,i5,5x,i7)
+     $  8x,8x,5x,2x,25x,6x,5x,i5,5x,i7)
+c    $  8x,8x,5x,6x,6x,6x,6x,5x,i5,5x,i7)
       if (istarnew.eq.istar.and.iset.eq.isetnew) then
         if(filno.le.MAXFILT) then
         umag(n,filno) = amag
@@ -1342,8 +1344,8 @@ c
       xmn = xmin
       ymx = ymax
       ymn = ymin
-c     call sm_limits(xmn,xmx,ymn,ymx)
-      call sm_limits(xmin,xmax,ymin,ymax)
+      call sm_limits(xmn,xmx,ymn,ymx)
+c     call sm_limits(xmin,xmax,ymin,ymax)
       call sm_ctype ('white')
       call sm_box (1,2,0,0)
       call sm_xlabel(xlab)
@@ -1351,20 +1353,19 @@ c     call sm_limits(xmn,xmx,ymn,ymx)
       call sm_gflush
       call sm_ctype ('green')
       IF (connect) THEN
-c       call sm_conn(xz,yz,npts)
-        call sm_conn(x,y,npts)
-        call sm_conn(x,y,npts)
+        call sm_conn(xz,yz,npts)
+c       call sm_conn(x,y,npts)
       ELSE
-c       call sm_ptype(2.43d2,1)
-        call sm_ptype(2.43e2,1)
-c       call sm_expand(1.1d0)
-        call sm_expand(1.1e0)
-c       call sm_points(xz,yz,npts)
-        call sm_points(x,y,npts)
-c       call sm_ptype(1.1d1,1)
-        call sm_ptype(1.1e1,1)
-c       call sm_expand(1.0d0)
-        call sm_expand(1.0e0)
+        call sm_ptype(2.43d2,1)
+c       call sm_ptype(2.43e2,1)
+        call sm_expand(1.1d0)
+c       call sm_expand(1.1e0)
+        call sm_points(xz,yz,npts)
+c       call sm_points(x,y,npts)
+        call sm_ptype(1.1d1,1)
+c       call sm_ptype(1.1e1,1)
+        call sm_expand(1.0d0)
+c       call sm_expand(1.0e0)
       ENDIF
       call sm_gflush
       x1(1) = xmin
@@ -1372,9 +1373,10 @@ c       call sm_expand(1.0d0)
       x1(2) = xmax
       y1(2) = b + slope*x1(2)
       call sm_ctype('red')
-      call sm_lweight(2.e0)
+      call sm_lweight(2.d0)
+c     call sm_lweight(2.e0)
       call sm_conn(x1,y1,2)
-      call sm_conn(x1,y1,2)
+c     call sm_conn(x1,y1,2)
 c
       call sm_gflush
       x1(1) = xmin
@@ -1383,7 +1385,7 @@ c
       y1(2) = b + slope*x1(2)
       call sm_ctype('red')
       call sm_conn(x1,y1,2)
-      call sm_conn(x1,y1,2)
+c     call sm_conn(x1,y1,2)
       call sm_gflush
 c
 c loop to remove discrepant points
