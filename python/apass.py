@@ -10,8 +10,24 @@ from copy import copy
 
 # global configuration settings for the APASS Project
 apass_save_dir = '/home/data/apass-test/'
+#apass_save_dir = '/2/home/kloppenb/dr9-test/'
+ccd_radius = 2500
 min_num_observations = 3
 num_filters = 6
+
+# Number of times the sphere is subdivided
+# this should be somewhat well matched to the polar_zone_cutoff below
+global_depth = 6 # dRA = 5.625 dDEC = 2.8125
+#global_depth = 7 # dRA = 2.8125 dDEC = 1.40625
+# number of times a zone is subdivided
+zone_depth = 4
+
+polar_zone_cutoff = 88 # |dec| greater than this are considered part of the polar zone
+
+# (static) IDs for the polar zones. Don't change these
+south_zone_id = 0
+north_zone_id = 1
+
 
 # FRED files have the following format:
 ## STANDARD MAGNITUDES ONLY
@@ -35,6 +51,17 @@ data_col_names = ['name', 'ra', 'ra_err', 'dec', 'dec_err', 'nobs', 'mobs', 'mag
 data_col_types = ['int', 'float64', 'float64', 'float64', 'float64', 'int', 'int', \
                   'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32', 'float32']
 
+def compare_fred_data(A, B):
+    """Compares two FRED entries stored as numpy structured arrays.
+    Returns True if they match identically, False otherwise."""
+
+    same_point = True
+
+    for key in fred_col_names:
+        if A[key] != B[key]:
+            same_point = False
+
+    return same_point
 
 def read_data(filename):
     """Reads in an output data file (e.g. a .dat file)"""
@@ -67,7 +94,7 @@ def get_coords(datum):
     """Extracts the coordinates from a single datum and returns (ra', dec') = (ra*cos(dec), dec)"""
     dec = datum['dec']
     ra  = datum['ra']
-    return get_coords_raw(ra, dec)
+    return [ra, dec]
 
 # store information in the following format
 #  zXXXXX.fredbin - zone file
@@ -150,23 +177,34 @@ def load_border_info(filename):
 def load_zone_data(tree, directory):
     """Restores zone data from the specified directory to the tree."""
 
-    # build a list of all of the node IDs in the tree
-    nodes = dict()
+    # build a nested dictionary that gives us direct access to the
+    # underlying containers. Indexing shall be
+    #  container = nodes[node_id][container_id]
+    node_dict = dict()
     leaves = tree.get_leaves() # these will be of type RectLeaf
-
-    # put a reference to the leaf into a dictionary for faster indexing
     for leaf in leaves:
         node_id = leaf.node_id
-        nodes[node_id] = leaf
 
-    # read in the data and assign it to the leaves
+        container_dict = dict()
+        for container in leaf.containers:
+            container_id = container.container_id
+
+            container_dict[container_id] = container
+
+        node_dict[node_id] = container_dict
+
+    # load the data
     zone_id = leaves[0].zone_id
     filename = directory + '/' + name_zone_container_file(zone_id)
     data = read_fredbin(filename)
+
+    # insert the data *directly* into the container, bipassing normal
+    # restoration methods.
     for i in range(0, len(data)):
         datum = data[i]
         node_id = datum['node_id']
-        nodes[node_id].insert_direct(datum)
+        container_id = datum['container_id']
+        node_dict[node_id][container_id].append_data(datum)
 
 def save_zone_data(tree, directory):
     """Saves zone data from the tree to the specified directory"""

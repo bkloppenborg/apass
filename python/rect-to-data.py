@@ -6,6 +6,7 @@ import os
 from numpy import *
 import glob
 import numpy as np
+import time
 
 # APASS-specific things
 import apass
@@ -57,10 +58,10 @@ def summarize_data(container):
     dec = average(data['dec'])
     dec_sig = std(data['dec'])
 
-    # filter out measurements outside of a 2048 - 100 = 1948 radius from
-    # the center of the CCD. (this is for 4096x4096 images only)
+    # filter out measurements outside of a specific radius from the center
+    # of the CCD
     center = 2048
-    radius = (2048-100)**2
+    radius = (apass.ccd_radius)**2
     radius_2 = radius*radius
 
     # look up the (x,y) location relative to the center of the CCD
@@ -98,7 +99,7 @@ def summarize_data(container):
     mags = dict()
     for filter_id in filter_ids:
         # extract known-good measurements for this filter
-        temp = data[(data['filter_id'] == filter_id) & (data['use_data'] == True)]
+        indexes = np.where((data['filter_id'] == filter_id) & (data['use_data'] == True))
         temp = data[indexes]
         num_obs = len(temp)
         # compute the average and standard deviation for the magnitude.
@@ -106,9 +107,14 @@ def summarize_data(container):
         #        mag_sig = sqrt(sum(error_i^2) / N
         #       double-counts the nightly photometric (Poisson) error.
         #       Arne indicates we should instead use std(mag) to avoid this problem
+        # If there is only one observation, copy the error.
         mag = average(temp['xmag1'])
-        mag_sig = std(temp['xmag1'])
-        mags[filter_id] = {'mag': mag, 'sig': mag_sig}
+        if num_obs > 1:
+            mag_sig = std(temp['xmag1'])
+        else:
+            mag_sig = temp['xerr1']
+
+        mags[filter_id] = {'mag': mag, 'sig': mag_sig, 'num': num_obs}
 
     # compute the number of observations and number of nights that made it through filtering
     num_observations = len(data)
@@ -158,6 +164,7 @@ def summarize_data(container):
             mag, mag_sig = read_mags(mags, 9)
         elif filter_id == 6:
             mag, mag_sig = read_mags(mags, 10)
+
 
         out_mags.append(mag)
         out_mag_sigs.append(mag_sig)
@@ -217,6 +224,7 @@ def main():
                         help="Run in debug mode")
     args = parser.parse_args()
 
+    start = time.time()
     # run in debug mode
     if args.debug:
         for zonefile in args.input:
@@ -224,9 +232,12 @@ def main():
     # run in production mode
     else:
         pool = mp.Pool(args.jobs)
-        result = pool.map_async(zone_to_data, args.input)
+        result = pool.imap(zone_to_data, args.input)
         pool.close()
         pool.join()
+
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 if __name__ == "__main__":
     main()

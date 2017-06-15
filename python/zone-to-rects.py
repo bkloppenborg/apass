@@ -23,7 +23,6 @@ def zone_to_rects(filename):
     zone_id = zone_from_name(filename)
 
     global tree_file
-    depth = 4
 
     # read in the (binary) data file
     data = read_fredbin(filename)
@@ -38,7 +37,7 @@ def zone_to_rects(filename):
 
     # build a tree for the zone
     zone_tree = QuadTreeNode(zone_bounds, 0, parent=None)
-    zone_tree.split_until(depth, leafClass=RectLeaf)
+    zone_tree.split_until(apass.zone_depth, leafClass=RectLeaf)
 
     # insert the data into the tree, building up containers (rectangles) in the
     # process
@@ -238,10 +237,7 @@ def main():
         pool = Pool(args.jobs)
 
         # farm out the work
-        result = pool.map_async(zone_to_rects, args.input)
-        result.get()
-
-        # close out the computation
+        result = pool.imap(zone_to_rects, args.input)
         pool.close()
         pool.join()
 

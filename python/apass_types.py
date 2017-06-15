@@ -18,6 +18,7 @@ class RectContainer(dict):
         self.moved_zone_id = -1
         self.moved_node_id = -1
         self.moved_container_id = -1
+        self.num_data = 0
 
         dr = 2. / (60 * 60) # 2 arcsecond in degrees
         dx = dr * cos(y * pi /  180)
@@ -47,12 +48,14 @@ class RectContainer(dict):
         container.moved_zone_id = dict_['moved_zone_id']
         container.moved_node_id = dict_['moved_node_id']
         container.moved_container_id = dict_['moved_container_id']
+        container.num_data = dict_['num_data']
         container.rect = Rect.from_dict(dict_['rect'])
         return container
 
     def append_data(self, data):
         """Appends the specified data to this object"""
         self.data.append(data)
+        self.num_data = len(self.data)
 
     def merge(self, other, mark_moved=False):
         """Merges two RectContainer Instances, growing their bounding rectangles
@@ -74,6 +77,8 @@ class RectContainer(dict):
             other.moved_zone_id = self.zone_id
             other.moved_node_id = self.node_id
             other.moved_container_id = self.container_id
+
+        self.num_data = len(self.data)
 
     def overlaps(self, other):
         """Determines if this RectContainer overlaps with another RectContainer
@@ -100,7 +105,7 @@ class RectLeaf(QuadTreeNode):
 
     def __init__(self, rect, depth, parent=None, zone_id=-1, node_id=-1):
         QuadTreeNode.__init__(self, rect, depth, parent)
- 
+
         self.zone_id = zone_id
         self.node_id = node_id
         self.containers = []
@@ -154,23 +159,21 @@ class RectLeaf(QuadTreeNode):
             container.merge(other)
         self.containers.append(container)
 
-    def insert_direct(self, data):
-        """Insert data directly into the container. Used in restoring this object
-        from a save file."""
-        container_id = data['container_id']
-
-        for container in self.containers:
-            if container.container_id == container_id:
-                container.append_data(data)
-
     def load_data(self, data):
         """Restores the specified data to the container. Used in object restoration."""
         if self.zone_id < 0 and self.node_id < 0:
             raise RuntimeError("Cannot load data for an uninitialized node!")
 
+        # build a dictionary of container ID -> containers
+        container_dict = dict()
+        for container in self.containers:
+            container_id = container.container_id
+            container_dict[container_id] = container
+
+        # insert the  data
         for i in range(0, len(data)):
             container_id = data[i]['container_id']
-            self.containers[container_id].append_data(data[i])
+            container_dict[container_id].append_data(data[i])
 
     def save_data(self, filehandle):
         """Saves the data in this node to the file handle savefile"""
