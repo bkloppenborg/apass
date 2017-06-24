@@ -30,17 +30,39 @@ or if that link is broken, replace the definition of `FREE` in
     #define FREE(x) 	((x) != 0 && (free ((char *) (x)), 0))
     #endif
 
-After this, simply 
+After this, configure SuperMongo
 
     cd sm_2_4_7
     set_opts    # take defaults, maybe move the install to ~/local
-    vim makefile
+    
+Edit the `src/options.h` file to remove the `#error` lines at the top of
+the file and add the `FORTRAN_APPEND _` line. After this, verify that
+the configuration in the makefile make sense:
+    
+    vim Makefile
 
-Check that `CC = cc -Wall -Dlinux` is set. You probably don't need the swap
-definition on modern systems.
+Specifically, check that `CC = cc -Wall -Dlinux` is set. You probably 
+don't need the swap definition on modern systems.
 
     make
     make install
+    
+After the installation step, check the external Fortran function naming
+convention used by your compiler. Fortran functions will either be prefixed by
+`f`, suffixed by one or two underscores. To determine the naming convention, run
+something similar to the following in your shell:
+
+    $ cd path_to_plotsub_install_dir
+    
+    $ nm -a libplotsub_d.a | grep sm_device
+    0000000000000eed T sm_device
+    000000000000071d T sm_device__
+    
+The first command locates your library. It should be in `/usr/local` or whatever
+directory you specified in the `set_opts` step above. In this case the compiler
+used the double-underscore convention. By default the build scripts here assume
+the double-underscore convention. If your compiler is different, modify the  
+`fortran/CmakeLists.txt` accordingly.
 
 ## SLAlib
 
@@ -50,8 +72,6 @@ however you wish. A simple CMake script to build it is as follows:
 
     cmake_minimum_required(VERSION 2.8)
     project(slalib Fortran)
-    
-    #set(CMAKE_Fortran_FLAGS -m32)
     
     file(GLOB SOURCE "*.f")
     

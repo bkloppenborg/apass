@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 project(apass Fortran C)
 
-# force a non-default underscoring method for easier linking with C code 
-set(CMAKE_Fortran_FLAGS "-fno-underscoring")
+# Depending on your C-compiler, SLAlib and SuperMongo's Fortran interfaces
+# may prefix Fortran functions with `f` or suffix them with one or two
+# underscores. For one underscore, you probably don't need to do anything.
+# For two underscores, activate the following option:
+set(CMAKE_Fortran_FLAGS "-fsecond-underscore")
 
 add_executable(filstat filstat.f)
 target_link_libraries(filstat aah)
@@ -27,9 +30,9 @@ find_package(X11 REQUIRED)
 
 # Output from SuperMongo compilation
 link_directories("/home/kloppenb/local/lib")
-set(PLOTSUB_LIBRARIES "libplotsub.a" CACHE FILEPATH "libplotsub.a")
-set(DEVICES_LIBRARIES "libdevices.a" CACHE FILEPATH "libdevices.a")
-set(UTILS_LIBRARIES  "libutils.a"   CACHE FILEPATH "libutils.a")
+set(PLOTSUB_LIBRARIES "libplotsub_d.a" CACHE FILEPATH "libplotsub_d.a")
+set(DEVICES_LIBRARIES "libdevices_d.a" CACHE FILEPATH "libdevices_d.a")
+set(UTILS_LIBRARIES   "libutils_d.a"   CACHE FILEPATH "libutils_d.a")
 
 # Output from SLAlib (Positional Astronomy Library)
 link_directories("/home/kloppenb/workspace/slalib/build/src")
