@@ -79,7 +79,7 @@ def main():
 
         # plot the data
         dec = zone_data['dec']
-        ra  = zone_data['ra'] * np.cos(dec * pi/180)
+        ra  = zone_data['ra']
         plt.scatter(ra, dec)
 
         #dec = zone_container_data['dec']
