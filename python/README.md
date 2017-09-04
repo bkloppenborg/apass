@@ -134,7 +134,7 @@ present this step does not have a parallel execution option. It automatically
 parses data found in the APASS save directory, so simply run the script as
 follows:
 
-    ~/workspace/apass/python fix-zone-overlaps.py 
+    ~/workspace/apass/python fix-zone-overlaps.py -j 8 
     Processing Zone: 1
      checking for overlaps with z00001n00171c00060
       merging z00001n00171c00060 
@@ -159,7 +159,7 @@ Lastly we convert the stellar measurements in the containers (e.g.
 `*-container.fredbin` files) into summarized data entries. This is accomplished
 using the `rect-to-data.py` script as follows:
 
-    ~/workspace/apass/python$ python rect-to-data.py /home/data/apass-test/*-container.fredbin -j 8
+    ~/workspace/apass/python$ python apass-rect-to-data.py /home/data/apass-test/*-container.fredbin -j 8
     Processing zone z00055
     Processing zone z00001
     Processing zone z00129

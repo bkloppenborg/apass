@@ -24,21 +24,26 @@ import numpy.lib.recfunctions as nprf
 import warnings
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 
+# the maximum radius for which the field flattener works correctly
+sro_max_ccd_radius = 2772.0 / 2
+sro_num_filters = 5
 
 # The output looks like this
-##  Name    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs       filt  mag  err
+##  Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs       filt  mag  err
 #0020131545  11.198035  0.477 -32.933803  0.396    3   12 12.828  0.931 13.758 13.245 12.593 12.471  0.159  0.164  0.039  0.036  0.088  0.289
 
-def summarize_data(container):
-    """Parses the measurements contained within a container and generates a
-    string summarizing the data."""
+def average_by_field(container):
+    """Parses the measurements contained within a container and averages the photometry
+    for each field number. This function generates a multi-line string, with each line
+    denoting data from a different field."""
 
-    # A rectangle file should contain data on precisely one star take in
-    # multiple photmetric filters.
+    # A container should store data on precisely one star, but that data will
+    # be taken through multiple photometric filters and potentially originate from
+    # multiple fields (telescope pointings). In this function, we average
+    # the photometry for each field and generate one output line for each field.
 
     # Read in the data. This will be a numpy.narray object, so we can slice
     # and dice it however we would like.
-
     data = container.data
     dtype={'names': apass.fredbin_col_names,'formats': apass.fredbin_col_types}
     data = np.asarray(container.data, dtype=dtype)
@@ -47,12 +52,11 @@ def summarize_data(container):
     tmp = np.zeros(len(data))
     data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
 
-    # return an empty string for containers with no data.
+    # if the container holds no data, immediately return an empty string
     if len(data) == 0:
         return ""
 
-    # RA and DEC:
-    name = data['star'][0]
+    # Compute the average RA and DEC using data from all measurements
     ra = average(data['ra'])
     ra_sig = std(data['ra'])
     dec = average(data['dec'])
@@ -61,17 +65,21 @@ def summarize_data(container):
     # filter out measurements outside of a specific radius from the center
     # of the CCD
     center = 2048
-    radius = (apass.ccd_radius)**2
+    radius = (sro_max_ccd_radius)**2
     radius_2 = radius*radius
 
-    # look up the (x,y) location relative to the center of the CCD
+    # Compute the (x,y) location of the stars relative to the center of the CCD
     x = data['ccdx'] - center
     y = data['ccdy'] - center
     ccd_radius_2 = x*x + y*y
 
-    #
-    # apply various filtering to determine when we set the 'use_data' column to true
+    # look up all of the field and filter IDs, we'll use these later.
+    field_ids  = set(data['field'])
     filter_ids = set(data['filter_id'])
+
+    ##
+    # Filtering Stages
+    ##
 
     # filter by CCD radius these data are always used
     indexes = np.where(ccd_radius_2 < radius_2)
@@ -95,89 +103,110 @@ def summarize_data(container):
         print("WARNING: No measurements passed filtering for zone %i node %i container %i" % (zone_id, node_id, container_id))
         return ""
 
+
+    # Now average the photometry on a per-field basis:
+    output = []
+    for field_id in field_ids:
+        indexes = np.where((data['field'] == field_id))
+        t_data = data[indexes]
+
+        mags = average_magnitudes(t_data, filter_ids)
+
+
+        # compute the number of observations and number of nights that made it through filtering
+        num_observations = len(t_data)
+        num_nights = len(set(t_data['night']))
+
+        # construct the output string
+        prefix_fmt = "%010i %10.6f %6.3f %10.6f %6.3f %4i %4i"
+        mag_fmt = "%6.3f"
+        # Start with the following information
+        #  # Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs
+        #  # 0020131545  11.198035  0.477 -32.933803  0.396    3   12
+        line = (prefix_fmt) % (field_id, ra, ra_sig, dec, dec_sig, num_nights, num_observations)
+        # now follow up with magnitudes and errors. Note that APASS splits them as
+        #  (mag1, ..., magN, err1, ..., errN)
+
+        # Loop over the filters and apply any custom reorganization to them.
+        out_mags = []
+        out_mag_sigs = []
+        for filter_id in range(1, sro_num_filters + 1):
+
+            # SRO filters are computed as follows
+            # index | out <- in
+            #   1 <- 3
+            #   2 <- (2 - 3)
+            #   3 <- 8
+            #   4 <- 9
+            #   5 <- 10
+            # we mirror this here
+            if filter_id == 1:
+                mag, mag_sig = read_mags(mags, 3)
+            elif filter_id == 2:
+                mag2, mag2_sig = read_mags(mags, 2)
+                mag3, mag3_sig = read_mags(mags, 3)
+
+                if mag2 == 99.999 or mag3 == 99.999:
+                    mag = 99.999
+                    mag_sig = 99.999
+                else:
+                    mag = mag2 - mag3
+                    mag_sig = sqrt(mag2_sig**2 + mag3_sig**2)
+            elif filter_id == 3:
+                mag, mag_sig = read_mags(mags, 8)
+            elif filter_id == 4:
+                mag, mag_sig = read_mags(mags, 9)
+            elif filter_id == 5:
+                mag, mag_sig = read_mags(mags, 10)
+
+
+            out_mags.append(mag)
+            out_mag_sigs.append(mag_sig)
+
+        # write out the magnitudes
+        for filter_id in range(0, sro_num_filters):
+            line += " " + (mag_fmt) % (out_mags[filter_id])
+
+        # and the corresponding uncertainties
+        for filter_id in range(0, sro_num_filters):
+            line += " " + (mag_fmt) % (out_mag_sigs[filter_id])
+
+        output.append(line)
+
+    # All done, return the string.
+    return output
+
+def average_magnitudes(data, filter_ids):
+
     # compute the magnitudes
     mags = dict()
-    for filter_id in filter_ids:
+    for filter_id in range(1, sro_num_filters + 1):
         # extract known-good measurements for this filter
         indexes = np.where((data['filter_id'] == filter_id) & (data['use_data'] == True))
         temp = data[indexes]
         num_obs = len(temp)
-        # compute the average and standard deviation for the magnitude.
-        # NOTE: Using standard error propigation methods, e.g.
-        #        mag_sig = sqrt(sum(error_i^2) / N
-        #       double-counts the nightly photometric (Poisson) error.
-        #       Arne indicates we should instead use std(mag) to avoid this problem
-        # If there is only one observation, copy the error.
-        mag = average(temp['xmag1'])
-        if num_obs > 1:
-            mag_sig = std(temp['xmag1'])
+
+        if num_obs > 0:
+
+            # compute the average and standard deviation for the magnitude.
+            # NOTE: Using standard error propigation methods, e.g.
+            #        mag_sig = sqrt(sum(error_i^2) / N
+            #       double-counts the nightly photometric (Poisson) error.
+            #       Arne indicates we should instead use std(mag) to avoid this problem
+            # If there is only one observation, copy the error.
+            mag = average(temp['xmag1'])
+            if num_obs > 1:
+                mag_sig = std(temp['xmag1'])
+            else:
+                mag_sig = temp['xerr1']
+
         else:
-            mag_sig = temp['xerr1']
+            mag = 99.999
+            mag_sig = 99.999
 
         mags[filter_id] = {'mag': mag, 'sig': mag_sig, 'num': num_obs}
 
-    # compute the number of observations and number of nights that made it through filtering
-    num_observations = len(data)
-    num_nights = len(set(data['night']))
-
-    # construct the output string
-    prefix_fmt = "%010i %10.6f %6.3f %10.6f %6.3f %4i %4i"
-    mag_fmt = "%6.3f"
-    # Start with the following information
-    #  # Name    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs
-    #  # 0020131545  11.198035  0.477 -32.933803  0.396    3   12
-    output = (prefix_fmt) % (name, ra, ra_sig, dec, dec_sig, num_nights, num_observations)
-    # now follow up with magnitudes and errors. Note that APASS splits them as
-    #  (mag1, ..., magN, err1, ..., errN)
-
-    out_mags = []
-    out_mag_sigs = []
-    for filter_id in range(1, apass.num_filters + 1):
-
-        # The existing APASS pipeline computes the six output filters
-        # as follows:
-        # index | out <- in
-        #   1 <- 3
-        #   2 <- (2 - 3)
-        #   3 <- 2
-        #   4 <- 8
-        #   5 <- 9
-        #   6 <- 10
-        # we mirror this here
-        if filter_id == 1:
-            mag, mag_sig = read_mags(mags, 3)
-        elif filter_id == 2:
-            mag2, mag2_sig = read_mags(mags, 2)
-            mag3, mag3_sig = read_mags(mags, 3)
-
-            if mag2 == 99.999 or mag3 == 99.999:
-                mag = 99.999
-                mag_sig = 99.999
-            else:
-                mag = mag2 - mag3
-                mag_sig = sqrt(mag2_sig**2 + mag3_sig**2)
-        elif filter_id == 3:
-            mag, mag_sig = read_mags(mags, 2)
-        elif filter_id == 4:
-            mag, mag_sig = read_mags(mags, 8)
-        elif filter_id == 5:
-            mag, mag_sig = read_mags(mags, 9)
-        elif filter_id == 6:
-            mag, mag_sig = read_mags(mags, 10)
-
-
-        out_mags.append(mag)
-        out_mag_sigs.append(mag_sig)
-
-    # write out the magnitudes
-    for filter_id in range(0, apass.num_filters):
-        output += " " + (mag_fmt) % (out_mags[filter_id])
-
-    # and the corresponding uncertainties
-    for filter_id in range(0, apass.num_filters):
-        output += " " + (mag_fmt) % (out_mag_sigs[filter_id])
-
-    return output
+    return mags
 
 def read_mags(mags_dict, filter_id):
     """Reads the magnitude and error from the dictionary for the specified filter."""
@@ -209,10 +238,11 @@ def zone_to_data(zone_container_filename):
     with open(outfile_name, 'w')  as outfile:
         for leaf in leaves:
             for container in leaf.containers:
-                output = summarize_data(container)
+                output = average_by_field(container)
 
                 if len(output) > 0:
-                    outfile.write(output + "\n")
+                    for entry in output:
+                        outfile.write(entry + "\n")
 
 def main():
 

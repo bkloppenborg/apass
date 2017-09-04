@@ -9,7 +9,7 @@ import json
 from copy import copy
 
 # global configuration settings for the APASS Project
-apass_save_dir = '/home/data/apass-test/'
+apass_save_dir = '/home/data/sro-test/'
 #apass_save_dir = '/2/home/kloppenb/dr9-test/'
 ccd_radius = 2500
 min_num_observations = 3
@@ -34,7 +34,7 @@ north_zone_id = 1
 ## FILCON ver 3.0
 ## RA (J2000)    DEC    CCDX      CCDY     Flags      HJD   Airmass  Set     Group    Field      Filt   Mag     Error    dmag    sys night
 ## 102.5140180   0.2598700  1828.670    16.950 0 0 56295.536090 2.133    1         92 0020110040     8  10.7481  0.0050  0.0460    31 56295
-fred_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'avexx', 'kset', 'group', 'star', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night']
+fred_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'avexx', 'kset', 'group', 'field', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night']
 fred_col_types = ['float64', 'float64', 'float32', 'float32', 'bool', 'bool', 'float32', 'float32', 'int32', 'int32', 'int32', 'uint8', 'float32', 'float32', 'float32', 'int32', 'int32']
 
 # fredbin follows the same format as fred, but also has columns for 'rect' and 'container'
