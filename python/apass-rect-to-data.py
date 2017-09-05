@@ -48,7 +48,7 @@ def summarize_data(container):
     data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
 
     # return an empty string for containers with no data.
-    if len(data) == 0:
+    if len(data) == 0 or container.moved == True:
         return ""
 
     # RA and DEC:

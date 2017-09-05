@@ -26,7 +26,9 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 
 # the maximum radius for which the field flattener works correctly
 sro_max_ccd_radius = 2772.0 / 2
-sro_num_filters = 5
+sro_filter_ids = [2, 3, 8, 9, 10] # B, V, sg, sr, si
+sro_num_filters = len(sro_filter_ids) + 1 # we write out V, (B-V), B, sg, sr, si)
+sro_min_num_observations = 3
 
 # The output looks like this
 ##  Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs       filt  mag  err
@@ -53,7 +55,7 @@ def average_by_field(container):
     data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
 
     # if the container holds no data, immediately return an empty string
-    if len(data) == 0:
+    if len(data) == 0 or container.moved == True:
         return ""
 
     # Compute the average RA and DEC using data from all measurements
@@ -90,7 +92,7 @@ def average_by_field(container):
     for filter_id in filter_ids:
         indexes = np.where(data['filter_id'] == filter_id)
         temp = data[indexes]
-        if sum(temp['use_data']) < apass.min_num_observations:
+        if sum(temp['use_data']) < sro_min_num_observations:
             data['use_data'][indexes] = True
 
     # If no observations passed the filtering stage, we have a serious problem.
@@ -111,7 +113,6 @@ def average_by_field(container):
         t_data = data[indexes]
 
         mags = average_magnitudes(t_data, filter_ids)
-
 
         # compute the number of observations and number of nights that made it through filtering
         num_observations = len(t_data)
@@ -136,9 +137,10 @@ def average_by_field(container):
             # index | out <- in
             #   1 <- 3
             #   2 <- (2 - 3)
-            #   3 <- 8
-            #   4 <- 9
-            #   5 <- 10
+            #   3 <- 2
+            #   4 <- 8
+            #   5 <- 9
+            #   6 <- 10
             # we mirror this here
             if filter_id == 1:
                 mag, mag_sig = read_mags(mags, 3)
@@ -153,10 +155,12 @@ def average_by_field(container):
                     mag = mag2 - mag3
                     mag_sig = sqrt(mag2_sig**2 + mag3_sig**2)
             elif filter_id == 3:
-                mag, mag_sig = read_mags(mags, 8)
+                mag, mag_sig = read_mags(mags, 2)
             elif filter_id == 4:
-                mag, mag_sig = read_mags(mags, 9)
+                mag, mag_sig = read_mags(mags, 8)
             elif filter_id == 5:
+                mag, mag_sig = read_mags(mags, 9)
+            elif filter_id == 6:
                 mag, mag_sig = read_mags(mags, 10)
 
 
@@ -180,7 +184,7 @@ def average_magnitudes(data, filter_ids):
 
     # compute the magnitudes
     mags = dict()
-    for filter_id in range(1, sro_num_filters + 1):
+    for filter_id in filter_ids:
         # extract known-good measurements for this filter
         indexes = np.where((data['filter_id'] == filter_id) & (data['use_data'] == True))
         temp = data[indexes]
