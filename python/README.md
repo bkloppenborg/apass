@@ -39,6 +39,7 @@ These packages can be installed on a Ubuntu system with the following commands:
 
     sudo apt install python-pip python-numpy python-matplotlib
     pip install numpy argparse matplotlib python-tk
+    pip install nxgraph pydotplus
 
 
 ## Sample reduction run

@@ -76,6 +76,8 @@ def main():
 
     # read in the data and build a graph:
     data = read_data(args.input)
+
+    print "initial array %i" % (id(data))
     G = build_graph(data, fields)
 
     # now process each field and merge things together
@@ -91,14 +93,22 @@ def main():
         edges = sorted(edges, key=lambda x: x[2]['weight'], reverse=True)
 
         start_node_id = edges[0][0]
-        merge_neighbors(start_node_id, data, sub_G)
+        data = merge_neighbors(start_node_id, data, sub_G)
 
         # verify that everyone was merged in
         for node_id in sub_G.nodes():
             if G.node[node_id]['merged'] != True:
                 print "Warning: Node %i was not merged!" % (node_id)
 
-    write_sro_dat('pAllZones.dat', data)
+        # save data specific to this field
+        indexes = np.in1d(data['field_id'], sub_G.nodes())
+        t_data = data[indexes]
+        filename = apass_save_dir + '/p%i.dat' % (field_base_id)
+        write_sro_dat(filename, t_data)
+
+    # save data to all fields
+    write_sro_dat(apass_save_dir + '/pALL.dat', data)
+
 
 def merge_neighbors(node_id_i, data, G):
 
@@ -117,14 +127,14 @@ def merge_neighbors(node_id_i, data, G):
             continue
 
         # merge the pointings and mark the edge as merged
-        merge_pointings(data, node_id_i, node_id_j, edge[2]['row_ids'])
+        data = merge_pointings(data, node_id_i, node_id_j, edge[2]['row_ids'])
         G.node[node_id_i]['merged'] = True
         G.node[node_id_j]['merged'] = True
 
         # recursively merge in other nodes
-        merge_neighbors(node_id_j, data, G)
+        data = merge_neighbors(node_id_j, data, G)
 
-
+    return data
 
 def merge_pointings(data, field_i, field_j, data_row_pairs):
     """ Computes a least squares fit between the data found in the rows identified
@@ -160,7 +170,7 @@ def merge_pointings(data, field_i, field_j, data_row_pairs):
 
     # copy the data we modified back into the main data array
     data[indexes] = merge_field_data
-
+    return data
 
 def get_field_name(field_id):
     return "field_" + str(field_id)
