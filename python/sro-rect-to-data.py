@@ -25,7 +25,7 @@ import warnings
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 
 # the maximum radius for which the field flattener works correctly
-sro_max_ccd_radius = 2772.0 / 2
+sro_max_ccd_radius = 3072.0 / 2
 sro_filter_ids = [2, 3, 8, 9, 10] # B, V, sg, sr, si
 sro_num_filters = len(sro_filter_ids) + 1 # we write out V, (B-V), B, sg, sr, si)
 sro_min_num_observations = 3
