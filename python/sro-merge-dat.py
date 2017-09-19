@@ -77,8 +77,10 @@ def main():
     # read in the data and build a graph:
     data = read_data(args.input)
 
-    print "initial array %i" % (id(data))
     G = build_graph(data, fields)
+    # enable to see the graph
+    #nx.draw_spring(G)
+    #plt.show()
 
     # now process each field and merge things together
     for field_base_id, row_order, col_order in fields:
@@ -87,13 +89,20 @@ def main():
         field_name = get_field_name(field_base_id)
         neighbors = nx.all_neighbors(G, field_name)
         sub_G = G.subgraph(neighbors)
+        # enable to see the graph
+        #nx.draw_networkx(sub_G)
+        #plt.show()
 
-        # find the node with the most edges
+        # find the node with the most edges and start there
         edges = sub_G.edges(data=True)
         edges = sorted(edges, key=lambda x: x[2]['weight'], reverse=True)
-
         start_node_id = edges[0][0]
-        data = merge_neighbors(start_node_id, data, sub_G)
+        adj_node_id = edges[0][1]
+
+        # merge the fields together.
+        G.node[start_node_id]['merged'] = True
+        #merge_by_greatest_weight(start_node_id, data, sub_G)
+        merge_by_neighbors(data, adj_node_id, G)
 
         # verify that everyone was merged in
         for node_id in sub_G.nodes():
@@ -110,7 +119,8 @@ def main():
     write_sro_dat(apass_save_dir + '/pALL.dat', data)
 
 
-def merge_neighbors(node_id_i, data, G):
+def merge_by_greatest_weight(node_id_i, data, G):
+    """Merges neighboring nodes together by following a path of greatest wei"""
 
     # get a list of all edges attached to this node and sort them in descending
     # order by weight
@@ -127,28 +137,64 @@ def merge_neighbors(node_id_i, data, G):
             continue
 
         # merge the pointings and mark the edge as merged
-        data = merge_pointings(data, node_id_i, node_id_j, edge[2]['row_ids'])
-        G.node[node_id_i]['merged'] = True
-        G.node[node_id_j]['merged'] = True
+        merge_pointings(data, node_id_j, [node_id_i], G)
 
         # recursively merge in other nodes
-        data = merge_neighbors(node_id_j, data, G)
+        merge_by_greatest_weight(node_id_j, data, G)
 
-    return data
 
-def merge_pointings(data, field_i, field_j, data_row_pairs):
-    """ Computes a least squares fit between the data found in the rows identified
-    in data_row_pairs and then merges field_j into the photometric system of
-    field_i
-    """
+def merge_by_neighbors(data, field_i, G):
+    """Merges field_i into the photometric system of its neighboring fields
+    that have already been merged."""
 
-    print " Merging %i %i" % (field_i, field_j)
+    # skip nodes that have already been merged
+    node_data = G.node[field_i]
+    if 'merged' not in node_data or node_data['merged'] == True:
+        return
 
-    # copy the data we will merge out of the main data array
-    indexes = np.where(data['field_id'] == field_j)
+    # find neighbors that have already been merged
+    merged_neighbors = []
+    other_neighbors = []
+    data_row_pairs = []
+    all_neighbors = nx.all_neighbors(G, field_i)
+    for neighbor in all_neighbors:
+        neighbor_data = G.node[neighbor]
+        if 'merged' in neighbor_data and neighbor_data['merged'] == True:
+            merged_neighbors.append(neighbor)
+            edge_data = G.get_edge_data(field_i, neighbor)
+            data_row_pairs.extend(edge_data['row_ids'])
+        else:
+            other_neighbors.append(neighbor)
+
+    # merge field_i into the photometric system of its neighbors.
+    merge_pointings(data, field_i, merged_neighbors, G)
+
+    # recursively merge in all of the other neighbors
+    for neighbor in other_neighbors:
+        merge_by_neighbors(data, neighbor, G)
+
+
+def merge_pointings(data, field_i, neighbors, G):
+
+    # generate a message
+    msg = ""
+    for field_j in neighbors:
+        msg += "%i " % (field_j)
+    print " Merging %i into the frames of %s " % (field_i, msg)
+
+    # generate a list of rows from which we will extract values.
+    data_row_pairs = []
+    for neighbor in neighbors:
+        neighbor_data = G.node[neighbor]
+        if 'merged' in neighbor_data and neighbor_data['merged'] == True:
+            edge_data = G.get_edge_data(field_i, neighbor)
+            data_row_pairs.extend(edge_data['row_ids'])
+
+    # select the data from field_i
+    indexes = np.where(data['field_id'] == field_i)
     merge_field_data = data[indexes]
 
-    # get the indices for the overlapping row entries
+    # Extract the indices for overlapping
     i,j = map(list, zip(*data_row_pairs))
     for filter_id in sro_filter_names:
 
@@ -170,6 +216,10 @@ def merge_pointings(data, field_i, field_j, data_row_pairs):
 
     # copy the data we modified back into the main data array
     data[indexes] = merge_field_data
+
+    # flag the field as merged
+    G.node[field_i]['merged'] = True
+
     return data
 
 def get_field_name(field_id):
@@ -228,9 +278,11 @@ def build_graph(data, fields):
     types = ['int', 'int', 'int', 'int']
     overlaps = np.core.records.fromrecords(overlaps, names=names, formats=types)
 
-    # Now build the graph. Note, in the end it is possible that some nodes might
-    # not be connected to any other nodes. We'll deal with that later.
+    # Now build the graph. Note, it is possible that some nodes in which we are not
+    # interested made it in, so we need to keep track of valid nodes and purge
+    # invalid nodes.
     G = nx.Graph()
+    valid_nodes = []
 
     # Add all of the nodes. Also create a field_name node so we can quickly
     # find unconnected nodes later
@@ -238,17 +290,23 @@ def build_graph(data, fields):
 
         field_name = "field_" + str(field_base_id)
         G.add_node(field_name)
+        valid_nodes.append(field_name)
 
         for row in row_order:
             for element in row:
                 node_id = field_base_id + element
                 G.add_node(node_id, merged=False)
                 G.add_edge(field_name, node_id)
+                valid_nodes.append(node_id)
 
         for element in col_order:
             node_id = field_base_id + element
             G.add_node(node_id, merged=False)
             G.add_edge(field_name, node_id)
+            valid_nodes.append(node_id)
+
+    # make the list of valid nodes unique
+    valid_nodes = list(set(valid_nodes))
 
     # add edges to the graph
     for row in overlaps:
@@ -268,6 +326,12 @@ def build_graph(data, fields):
 
         edge['row_ids'].append((src_row, dest_row))
         edge['weight'] = len(edge['row_ids'])
+
+
+    # remove any nodes that are not suppose to be in the graph
+    for node in nx.nodes(G):
+        if node not in valid_nodes:
+            G.remove_node(node)
 
     # the graph is built, we're golden.
     return G

@@ -148,9 +148,6 @@ follows:
     Processing Zone: 8
     ...
 
-This will take a long time, so it might be a good idea to run it using GNU
-screen or in a background process. 
-
 After this command completes, there will not be any new files. Instead, the script
 re-arranges (and rewrites) any `-container.fredbin` files which have overlapping
 entries. Note, because of the internal tree representation, zones 0 and 1 may be
@@ -193,3 +190,15 @@ On Linux- or Unix-based machines, you can do this:
     cat /home/data/apass/test/*.dat > output.dat
     
 This final data file can be supplied to later stages of the data reduction pipeline.
+
+## SRO Data
+
+In the case of SRO data, the pipeline follows the same sequence as the APASS data, 
+but has an additional step:
+
+    make-zones.py
+    fred-to-zone.py [-j N] *.fred
+    zone-to-rect.py [-j N] *.fredbin
+    fix-zone-overlaps.py [-j N]
+    sro-rect-to-data.py [-j N] *-container.fredbinA
+    sro-merge-dat.py
