@@ -7,6 +7,7 @@ from scipy.optimize import least_squares
 import matplotlib.pyplot as plt
 import networkx as nx
 from operator import attrgetter
+import os
 
 # code cleaning could remove/change this dependency
 from apass import apass_save_dir
@@ -57,6 +58,33 @@ col_order = [5, 37, 7, 38, 17, 39, 19, 40, 35, 41, 33]
 fields.append([31000000, row_order, col_order])
 fields.append([31100000, row_order, col_order])
 
+def get_positions(field_base_id, row_order, col_order):
+    """Computes the positions of the vertexes in a graph given the row and
+    column order of the vertexes.
+    Returns a dictionary"""
+
+    num_rows = len(row_order)
+    num_cols = len(row_order[0])
+
+    pos = dict()
+
+    for row in range(0, num_rows):
+        data = row_order[row]
+        for col in range(0, num_cols):
+            cell_id = data[col]
+            pos[field_base_id + cell_id] = (col, row)
+
+    # find the column
+    col = row_order[0].index(col_order[0])
+    for row in range(0, len(col_order)):
+        if row % 2 == 0:
+            continue
+
+        cell_id = col_order[row]
+        pos[field_base_id + cell_id] = (col - 0.25, float(row)/2)
+
+    return pos
+
 def read_sro_dat_file(filename):
     """Reads in a SRO .dat file to a numpy associative array."""
     dtype={'names': sro_col_names, 'formats': sro_col_types}
@@ -74,13 +102,33 @@ def main():
 
     start = time.time()
 
-    # read in the data and build a graph:
-    data = read_data(args.input)
-
-    G = build_graph(data, fields)
-    # enable to see the graph
-    #nx.draw_spring(G)
+    # read in the data and overlaping node graph data structure
+    data, G = read_data(args.input)
+    # enable to see the graph corresponding to the linkages between fields
+    #nx.draw_networkx(G)
     #plt.show()
+
+    # Create a vertex that we can use to quickly look up all fields
+    # belonging to a given field_base_id. Insert edges to link it all
+    # together.
+    for field_base_id, row_order, col_order in fields:
+        field_ids = []
+        for row in row_order:
+            for field in row:
+                field_ids.append(field_base_id + field)
+
+        for field in col_order:
+            field_ids.append(field_base_id + field)
+
+        field_ids = list(set(field_ids))
+        field_name = get_field_name(field_base_id)
+        G.add_node(field_name)
+        for field in field_ids:
+            G.add_edge(field_name, field)
+
+    # enable to see graph with field_base_id attachments
+    nx.draw_networkx(G)
+    plt.show()
 
     # now process each field and merge things together
     for field_base_id, row_order, col_order in fields:
@@ -90,8 +138,10 @@ def main():
         neighbors = nx.all_neighbors(G, field_name)
         sub_G = G.subgraph(neighbors)
         # enable to see the graph
-        #nx.draw_networkx(sub_G)
-        #plt.show()
+        plt.figure(num=None, figsize=(10,10))
+        pos = get_positions(field_base_id, row_order, col_order)
+        nx.draw_networkx(sub_G, pos=pos)
+        plt.savefig(apass_save_dir + str(field_base_id) + ".png")
 
         # find the node with the most edges and start there
         edges = sub_G.edges(data=True)
@@ -106,6 +156,7 @@ def main():
 
         # verify that everyone was merged in
         for node_id in sub_G.nodes():
+            print node_id, G.node[node_id]
             if G.node[node_id]['merged'] != True:
                 print "Warning: Node %i was not merged!" % (node_id)
 
@@ -149,7 +200,7 @@ def merge_by_neighbors(data, field_i, G):
 
     # skip nodes that have already been merged
     node_data = G.node[field_i]
-    if 'merged' not in node_data or node_data['merged'] == True:
+    if node_data['merged'] == True:
         return
 
     # find neighbors that have already been merged
@@ -158,11 +209,15 @@ def merge_by_neighbors(data, field_i, G):
     data_row_pairs = []
     all_neighbors = nx.all_neighbors(G, field_i)
     for neighbor in all_neighbors:
+        # skip non-numeric neighbor IDs (e.g. "field_XXXX")
+        if isinstance(neighbor, str):
+            continue
+
         neighbor_data = G.node[neighbor]
-        if 'merged' in neighbor_data and neighbor_data['merged'] == True:
+        if neighbor_data['merged'] == True:
             merged_neighbors.append(neighbor)
             edge_data = G.get_edge_data(field_i, neighbor)
-            data_row_pairs.extend(edge_data['row_ids'])
+            data_row_pairs.extend(edge_data['line_ids'])
         else:
             other_neighbors.append(neighbor)
 
@@ -186,9 +241,9 @@ def merge_pointings(data, field_i, neighbors, G):
     data_row_pairs = []
     for neighbor in neighbors:
         neighbor_data = G.node[neighbor]
-        if 'merged' in neighbor_data and neighbor_data['merged'] == True:
+        if neighbor_data['merged'] == True:
             edge_data = G.get_edge_data(field_i, neighbor)
-            data_row_pairs.extend(edge_data['row_ids'])
+            data_row_pairs.extend(edge_data['line_ids'])
 
     # select the data from field_i
     indexes = np.where(data['field_id'] == field_i)
@@ -226,116 +281,80 @@ def get_field_name(field_id):
     return "field_" + str(field_id)
 
 def read_data(filenames):
+    """Reads in APASS/SRO formatted .dat and .p files
+
+    Returns:
+    * A numpy array containing data with the fields as described in sro_col_names
+    * A networkx graph structure containing relaionships between various fields.
+    """
 
     # read in the data
     data = []
+    G = nx.Graph()
+    num_rows = 0
     for filename in filenames:
         print "Reading %s" % (filename)
-        t_data = read_sro_dat_file(filename)
 
-        # here we convert from a ndarray to list to speed up concatenation.
+        base_filename = os.path.splitext(filename)[0]
+
+        # read in the data and append it to the data list.
+        t_data = read_sro_dat_file(filename)
         data.extend(t_data.tolist())
 
+        # read in the NetworkX graph. It is formatted as follows:
+        # vertex - Field ID
+        # edge - dict(line_ids=[], weight=0, merged=False)
+        t_G = nx.read_gpickle(base_filename + ".p")
+
+        # update the row indicies in the edge data
+        edges = t_G.edges_iter(data=True)
+        for edge in edges:
+            line_ids = edge[2]['line_ids']
+            line_ids = [(a+num_rows, b+num_rows) for a,b in line_ids]
+            edge[2]['line_ids'] = line_ids
+
+        # merge the graphs
+        merge_graphs(G, t_G)
+
+        num_rows = len(data)
+
+    # ensure that all nodes and edges are flagged as not merged.
+    for node in G.nodes_iter(data=True):
+        node[1]['merged'] = False
+    for edge in G.edges_iter(data=True):
+        edge[2]['merged'] = False
+
     print "Read %i entries" % (len(data))
+    print "Nodes: %i" % (len(G.nodes()))
+    print "Edges: %i" % (len(G.edges()))
 
     # convert back to a numpy array to make the rest of the logic easier to implement
     data = np.asarray(data, dtype={'names': sro_col_names, 'formats': sro_col_types})
 
-    return data
+    return data, G
 
-def build_graph(data, fields):
-    """Builds a NetworkX graph data structure from the data.
-    """
+def merge_graphs(G, t_G):
+    """Merges NetworkX graph t_G into G"""
+    for node in t_G.nodes():
+        if node not in G.nodes():
+            G.add_node(node, merged=False)
 
-    # Find all overlapping entries. We can compare the RA/DEC values
-    # directly because the sro-rect-to-data.py script ensures all
-    # entries in the same container were written using the same RA/DEC
-    # value
-    ra  = data[0]['ra']
-    dec = data[0]['dec']
-    overlaps = [] # will store all overlaps after the loop completes
-    t_overlaps = [(0, data[0]['field_id'])] # stores successive overlaps temporally
-    for i in range(1, len(data)):
-        if data[i]['ra'] == ra and data[i]['dec'] == dec:
-            t_overlaps.append((i, data[i]['field_id']))
-        else:
-            for j in range(0, len(t_overlaps)):
-                j_row_id, j_field_id = t_overlaps[j]
-                for k in range(j + 1, len(t_overlaps)):
-                    k_row_id, k_field_id = t_overlaps[k]
+    for t_edge in t_G.edges_iter(data=True):
+        t_src  = t_edge[0]
+        t_dst  = t_edge[1]
+        t_data = t_edge[2]
 
-                    overlaps.append([j_field_id, j_row_id, k_field_id, k_row_id])
+        # prohibit circular loops
+        if t_src == t_dst:
+            continue
 
-            # clear it
-            t_overlaps = [(i, data[i]['field_id'])]
+        G_edge = None
+        if not G.has_edge(t_src, t_dst):
+            G_edge = G.add_edge(t_src, t_dst, line_ids=[], weight=0, merged=False)
 
-        # update/increment the RA?DEC
-        ra  = data[i]['ra']
-        dec = data[i]['dec']
-
-    # Store the data into a ndarray to accelerate lookups later
-    names = ['field_id0', 'row_id0', 'field_id1', 'row_id1']
-    types = ['int', 'int', 'int', 'int']
-    overlaps = np.core.records.fromrecords(overlaps, names=names, formats=types)
-
-    # Now build the graph. Note, it is possible that some nodes in which we are not
-    # interested made it in, so we need to keep track of valid nodes and purge
-    # invalid nodes.
-    G = nx.Graph()
-    valid_nodes = []
-
-    # Add all of the nodes. Also create a field_name node so we can quickly
-    # find unconnected nodes later
-    for field_base_id, row_order, col_order in fields:
-
-        field_name = "field_" + str(field_base_id)
-        G.add_node(field_name)
-        valid_nodes.append(field_name)
-
-        for row in row_order:
-            for element in row:
-                node_id = field_base_id + element
-                G.add_node(node_id, merged=False)
-                G.add_edge(field_name, node_id)
-                valid_nodes.append(node_id)
-
-        for element in col_order:
-            node_id = field_base_id + element
-            G.add_node(node_id, merged=False)
-            G.add_edge(field_name, node_id)
-            valid_nodes.append(node_id)
-
-    # make the list of valid nodes unique
-    valid_nodes = list(set(valid_nodes))
-
-    # add edges to the graph
-    for row in overlaps:
-
-        src_field  = row['field_id0']
-        src_row    = row['row_id0']
-        dest_field = row['field_id1']
-        dest_row   = row['row_id1']
-
-        # attempt to find the edge, if it doesn't exist, create it.
-        edge = None
-        try:
-            edge = G[src_field][dest_field]
-        except:
-            G.add_edge(src_field, dest_field, row_ids=[], weight=0, merged=False)
-            edge = G[src_field][dest_field]
-
-        edge['row_ids'].append((src_row, dest_row))
-        edge['weight'] = len(edge['row_ids'])
-
-
-    # remove any nodes that are not suppose to be in the graph
-    for node in nx.nodes(G):
-        if node not in valid_nodes:
-            G.remove_node(node)
-
-    # the graph is built, we're golden.
-    return G
-
+        G_edge = G[t_src][t_dst]
+        G_edge['weight'] += t_data['weight']
+        G_edge['line_ids'].extend(t_data['line_ids'])
 
 def write_sro_dat(filename, data):
     print "Saving %s" % (filename)

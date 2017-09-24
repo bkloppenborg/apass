@@ -7,6 +7,8 @@ from numpy import *
 import glob
 import numpy as np
 import time
+import itertools
+import networkx as nx
 
 # APASS-specific things
 import apass
@@ -36,8 +38,12 @@ sro_min_num_observations = 3
 
 def average_by_field(container):
     """Parses the measurements contained within a container and averages the photometry
-    for each field number. This function generates a multi-line string, with each line
-    denoting data from a different field."""
+    for each field number.
+
+    This function returns:
+    1. A list of string containing the averaged data
+    2. A list of field IDs stored in this container.
+    """
 
     # A container should store data on precisely one star, but that data will
     # be taken through multiple photometric filters and potentially originate from
@@ -178,7 +184,10 @@ def average_by_field(container):
         output.append(line)
 
     # All done, return the string.
-    return output
+    if len(output) != len(field_ids):
+        raise "Field averages and number of fields do not match!"
+
+    return output, field_ids
 
 def average_magnitudes(data, filter_ids):
 
@@ -231,6 +240,9 @@ def zone_to_data(zone_container_filename):
     zone_name = apass.name_zone(zone_id)
     print "Processing zone " + zone_name
 
+    # create a graph data structure for this zone
+    G = nx.Graph()
+
     # load the zone's tree and data from disk and get the leaves
     zone_json = apass.apass_save_dir + apass.name_zone_json_file(zone_id)
     zone_tree = QuadTreeNode.from_file(zone_json, leafClass=RectLeaf)
@@ -238,15 +250,49 @@ def zone_to_data(zone_container_filename):
     leaves = zone_tree.get_leaves()
 
     # process the data
-    outfile_name = apass.apass_save_dir + "/" + zone_name + ".dat"
-    with open(outfile_name, 'w')  as outfile:
+    line_no = 0
+    dat_filename = apass.apass_save_dir + "/" + zone_name + ".dat"
+    with open(dat_filename, 'w') as dat_file:
         for leaf in leaves:
             for container in leaf.containers:
-                output = average_by_field(container)
+                output_lines, field_ids = average_by_field(container)
 
-                if len(output) > 0:
-                    for entry in output:
-                        outfile.write(entry + "\n")
+                # save the text data to file, noting what lines it gets
+                # written to
+                line_numbers = []
+                for line in output_lines:
+                    dat_file.write(line + "\n")
+                    line_numbers.append(line_no)
+                    line_no += 1
+
+                # for stars that have more than one field, we add this information
+                # to the graph data structure to recover the data in the next stage
+                # of the pipeline
+                if len(field_ids) > 1:
+                    # generate all possible combinations of the line numbers and field IDs
+                    # these express the edges in the graph
+                    line_pairs = list(itertools.combinations(line_numbers, 2))
+                    field_pairs = list(itertools.combinations(field_ids, 2))
+
+                    for line_pair, field_pair in zip(line_pairs, field_pairs):
+                        src_line = line_pair[0]
+                        dst_line = line_pair[1]
+                        src_field = field_pair[0]
+                        dst_field = field_pair[1]
+
+                        try:
+                            edge = G[src_field][dst_field]
+                        except:
+                            G.add_edge(src_field, dst_field, line_ids=[], weight=0)
+                            edge = G[src_field][dst_field]
+
+                        edge['line_ids'].append((src_line, dst_line))
+                        edge['weight'] += 1
+
+    # save the pickle file
+    graph_filename = apass.apass_save_dir + "/" + zone_name + ".p"
+    nx.write_gpickle(G, graph_filename)
+
 
 def main():
 
