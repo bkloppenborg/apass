@@ -15,7 +15,7 @@ from apass import apass_save_dir
 # the following are useful includes, but are not mission critical:
 import time
 
-BAD_MAG_VALUE = 99.999
+BAD_MAG_VALUE = 90  # anything with a mag greater than 90 is bogus
 MIN_MAG_SIG = 0.001
 
 # the SRO data format is as follows:
@@ -127,8 +127,8 @@ def main():
             G.add_edge(field_name, field)
 
     # enable to see graph with field_base_id attachments
-    nx.draw_networkx(G)
-    plt.show()
+    #nx.draw_networkx(G)
+    #plt.show()
 
     # now process each field and merge things together
     for field_base_id, row_order, col_order in fields:
@@ -138,9 +138,11 @@ def main():
         neighbors = nx.all_neighbors(G, field_name)
         sub_G = G.subgraph(neighbors)
         # enable to see the graph
-        plt.figure(num=None, figsize=(10,10))
+        plt.figure(num=None, figsize=(15,15))
         pos = get_positions(field_base_id, row_order, col_order)
         nx.draw_networkx(sub_G, pos=pos)
+        labels = nx.get_edge_attributes(sub_G,'weight')
+        nx.draw_networkx_edge_labels(sub_G, pos, edge_labels=labels)
         plt.savefig(apass_save_dir + str(field_base_id) + ".png")
 
         # find the node with the most edges and start there
@@ -151,13 +153,20 @@ def main():
 
         # merge the fields together.
         G.node[start_node_id]['merged'] = True
+        print "Starting at node %i" % (start_node_id)
+        # initial merging method, follows the path of greatest weight through the
+        # graph.
         #merge_by_greatest_weight(start_node_id, data, sub_G)
-        merge_by_neighbors(data, adj_node_id, G)
+        # second merging method, finds the neighbor that is most connected to existing
+        # merged neighbors.
+        #merge_by_neighbors(data, adj_node_id, G)
+        # third merging method
+        wavefront = sub_G.neighbors(start_node_id)
+        merge_by_wavefront(data, wavefront, sub_G)
 
         # verify that everyone was merged in
         for node_id in sub_G.nodes():
-            print node_id, G.node[node_id]
-            if G.node[node_id]['merged'] != True:
+            if 'merged' in G.node[node_id] and G.node[node_id]['merged'] != True:
                 print "Warning: Node %i was not merged!" % (node_id)
 
         # save data specific to this field
@@ -228,6 +237,53 @@ def merge_by_neighbors(data, field_i, G):
     for neighbor in other_neighbors:
         merge_by_neighbors(data, neighbor, G)
 
+def merge_by_wavefront(data, wavefront, G):
+    """
+    """
+
+    # stop merging when the wavefront is empty
+    if len(wavefront) == 0:
+        return
+
+    # find the node that is most connected to merged vertices, best_node
+    best_edge_count = 0
+    best_node = None
+    for node in wavefront:
+        edge_count = 0
+        for edge in G.edges(node, data=True):
+            src = edge[0]
+            dst = edge[1]
+            weight = edge[2]['weight']
+
+            if G.node[dst]['merged'] == True:
+                edge_count += weight
+
+        if edge_count > best_edge_count:
+            best_node = node
+            best_edge_count = edge_count
+
+    # find the merged and un-merged neighbors of best_node
+    all_neighbors = nx.all_neighbors(G, best_node)
+    merged_neighbors = []
+    unmerged_neighbors = []
+    for neighbor in all_neighbors:
+        if G.node[neighbor]['merged'] == True:
+            merged_neighbors.append(neighbor)
+        else:
+            unmerged_neighbors.append(neighbor)
+
+    # merge best_node using its merged_neighbors
+    merge_pointings(data, best_node, merged_neighbors, G)
+
+    # remove this node from the unmerged neighbors list.
+    wavefront.remove(best_node)
+    # append non-merged neighbors
+    for neighbor in unmerged_neighbors:
+        if neighbor not in wavefront:
+            wavefront.append(neighbor)
+
+    # Advance the wavefront.
+    merge_by_wavefront(data, wavefront, G)
 
 def merge_pointings(data, field_i, neighbors, G):
 
@@ -255,12 +311,13 @@ def merge_pointings(data, field_i, neighbors, G):
 
         x, y, x_sig, y_sig = get_good_data(data, i, j, filter_id)
 
+
         # run a least-squares fit between the two fields
         params = [0]
         results = least_squares(delta_mag_func, params, args=(x, y, x_sig, y_sig))
         params = results.x
 
-        print "  %3s delta: %+f" % (filter_id, params[0])
+        print "  %3s delta: %+f, num: %i" % (filter_id, params[0], len(x))
 
         # find filter measurements in the merge field that are valid, copy them
         # out of the array, apply the delta, and copy them back.
@@ -268,6 +325,27 @@ def merge_pointings(data, field_i, neighbors, G):
         good_rows = merge_field_data[good_value_indexes]
         good_rows[filter_id] += params[0]
         merge_field_data[good_value_indexes] = good_rows
+
+        #plt.subplot(3,1,1)
+        #point_num = np.arange(0, len(x))
+        #plt.errorbar(point_num, x, xerr=x_sig, fmt='o')
+        #plt.errorbar(point_num, y, xerr=y_sig, fmt='o')
+        #plt.title("Input magnitude values")
+
+        #residuals_in = delta_mag_func([0], x, y, x_sig, y_sig)
+        #chi_2_in = sum(residuals_in)
+        #residuals_out = results.fun
+        #chi_2_out = sum(residuals_out)
+
+        #plt.subplot(3,1,2)
+        #plt.scatter(point_num, residuals_in )
+        #plt.scatter(point_num, residuals_out)
+        #plt.title("Residuals")
+
+        #plt.subplot(3,1,3)
+        #plt.hist(residuals_in, bins=20)
+        #plt.hist(residuals_out, bins=20)
+        #plt.show()
 
     # copy the data we modified back into the main data array
     data[indexes] = merge_field_data
