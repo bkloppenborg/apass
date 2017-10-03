@@ -5,7 +5,6 @@ from numpy import cos
 from math import pi
 import inspect
 import glob
-from enum import Enum
 
 # parallel processing
 import multiprocessing as mp
