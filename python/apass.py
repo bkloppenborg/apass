@@ -23,18 +23,17 @@ global_depth = 6 # dRA = 5.625 dDEC = 2.8125
 zone_depth = 4
 
 polar_zone_cutoff = 88 # |dec| greater than this are considered part of the polar zone
-
 # (static) IDs for the polar zones. Don't change these
 south_zone_id = 0
 north_zone_id = 1
 
 
 # FRED files have the following format:
-## STANDARD MAGNITUDES ONLY
-## FILCON ver 3.0
-## RA (J2000)    DEC    CCDX      CCDY     Flags      HJD   Airmass  Set     Group    Field      Filt   Mag     Error    dmag    sys night
-## 102.5140180   0.2598700  1828.670    16.950 0 0 56295.536090 2.133    1         92 0020110040     8  10.7481  0.0050  0.0460    31 56295
-fred_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'avexx', 'kset', 'group', 'field', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night']
+# STANDARD MAGNITUDES ONLY
+# FILCON ver 3.3
+# RA (J2000)    DEC        CCDX      CCDY  Flags   HJD      Airmass   Set      Group   Object                   Filt   Mag    Error    dmag    sys night
+# 105.4134694   0.6743509  2996.030    31.010 0 0 56029.599560 1.310    1          2 10040L                        8  16.5515  0.2880  0.0391   232 56029
+fred_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'airmass', 'set', 'group', 'field', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night']
 fred_col_types = ['float64', 'float64', 'float32', 'float32', 'bool', 'bool', 'float32', 'float32', 'int32', 'int32', 'int32', 'uint8', 'float32', 'float32', 'float32', 'int32', 'int32']
 
 # fredbin follows the same format as fred, but also has columns for 'rect' and 'container'
