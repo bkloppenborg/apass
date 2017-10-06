@@ -9,8 +9,8 @@ import json
 from copy import copy
 
 # global configuration settings for the APASS Project
-apass_save_dir = '/home/data/sro-test/'
-#apass_save_dir = '/2/home/kloppenb/dr9-test/'
+#apass_save_dir = '/home/data/sro-test/'
+apass_save_dir = '/2/home/kloppenb/dr10-test/'
 ccd_radius = 2500
 min_num_observations = 3
 num_filters = 6
@@ -34,7 +34,7 @@ north_zone_id = 1
 # RA (J2000)    DEC        CCDX      CCDY  Flags   HJD      Airmass   Set      Group   Object                   Filt   Mag    Error    dmag    sys night
 # 105.4134694   0.6743509  2996.030    31.010 0 0 56029.599560 1.310    1          2 10040L                        8  16.5515  0.2880  0.0391   232 56029
 fred_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'airmass', 'set', 'group', 'field', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night']
-fred_col_types = ['float64', 'float64', 'float32', 'float32', 'bool', 'bool', 'float32', 'float32', 'int32', 'int32', 'int32', 'uint8', 'float32', 'float32', 'float32', 'int32', 'int32']
+fred_col_types = ['float64', 'float64', 'float32', 'float32', 'bool', 'bool', 'float32', 'float32', 'int32', 'int32', 'S25', 'uint8', 'float32', 'float32', 'float32', 'int32', 'int32']
 
 # fredbin follows the same format as fred, but also has columns for 'rect' and 'container'
 fredbin_col_names = copy(fred_col_names)
@@ -43,7 +43,7 @@ fredbin_col_names.extend(fredbin_extra_cols)
 fredbin_col_types = copy(fred_col_types)
 fredbin_extra_types = ['int32', 'int32', 'int32']
 fredbin_col_types.extend(fredbin_extra_types)
-fredbin_savetxt_fmt = ['%03.6f', '%03.6f', '%02.6f', '%02.6f', '%d', '%d', '%02.6f', '%02.6f', '%6i', '%6i', '%6i', '%i', '%02.6f', '%02.6f', '%02.6f', '%6i', '%6i', '%6i', '%6i', '%6i']
+fredbin_savetxt_fmt = ['%03.6f', '%03.6f', '%02.6f', '%02.6f', '%d', '%d', '%02.6f', '%02.6f', '%6i', '%6i', '%s25', '%i', '%02.6f', '%02.6f', '%02.6f', '%6i', '%6i', '%6i', '%6i', '%6i']
 
 # data format for output data
 data_col_names = ['name', 'ra', 'ra_err', 'dec', 'dec_err', 'nobs', 'mobs', 'mag1', 'mag2', 'mag3', 'mag4', 'mag5', 'mag6', 'mag_err1', 'mag_err2', 'mag_err3', 'mag_err4', 'mag_err5', 'mag_err6']
