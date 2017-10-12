@@ -9,6 +9,11 @@ import networkx as nx
 from operator import attrgetter
 import os
 
+# for the scatter_histogram function
+import matplotlib.gridspec as gridspec
+from matplotlib.ticker import NullFormatter
+from scipy.stats import norm
+
 # code cleaning could remove/change this dependency
 from apass import apass_save_dir
 
@@ -26,64 +31,116 @@ sro_col_names = ['field_id', 'ra', 'ra_sig', 'dec', 'dec_sig', 'num_nights', 'nu
 sro_col_names.extend(sro_filter_names)
 sro_col_names.extend([s + "_sig" for s in sro_filter_names])
 
-sro_col_formats = ['%010i', '%10.6f', '%6.3f', '%10.6f', '%6.3f', '%4i', '%4i',
+sro_col_formats = ['%10s', '%10.6f', '%6.3f', '%10.6f', '%6.3f', '%4i', '%4i',
                    '%6.3f', '%6.3f', '%6.3f', '%6.3f', '%6.3f', '%6.3f',
                    '%6.3f', '%6.3f', '%6.3f', '%6.3f', '%6.3f', '%6.3f']
-sro_col_types = ['int', 'float64', 'float64', 'float64', 'float64', 'int', 'int',
+sro_col_types = ['S10', 'float64', 'float64', 'float64', 'float64', 'int', 'int',
                   'float32', 'float32', 'float32', 'float32', 'float32', 'float32',
                   'float32', 'float32', 'float32', 'float32', 'float32', 'float32']
 
+def make_pointings(field_base_id, pointings):
+
+    output = []
+    for pointing in pointings:
+        output.append('00' + str(field_base_id + pointing))
+
+    return output
+
 # Fields which we will merge (excluding the pointing number)
 fields = []
+fields.append([30800000, make_pointings(30800000, range(1,42))])
+fields.append([30900000, make_pointings(30900000, range(1,42))])
+fields.append([31000000, make_pointings(31000000, range(1,43))])
+fields.append([31100000, make_pointings(31100000, range(1,42))])
 
-# Fields 308 and 309 use the following pointing order:
-row_order = [[ 1,  2,  6,  5,  9, 10],
-             [ 3,  4,  8,  7, 11, 12],
-             [13, 14, 18, 17, 21, 22],
-             [15, 16, 20, 19, 23, 24],
-             [31, 32, 36, 35, 27, 28],
-             [29, 30, 34, 33, 25, 26]]
-col_order = [5, 37, 7, 38, 17, 39, 19, 40, 35, 41, 33]
-fields.append([30800000, row_order, col_order])
-fields.append([30900000, row_order, col_order])
+# Matplotlib figure numbers for specific plots
+fig_residuals_in = None
+fig_residuals_out = None
 
-# whereas fields 310, 311, and 400 use this pointing order:
-row_order = [[ 1,  2,  5,  6,  9, 10],
-             [ 3,  4,  7,  8, 11, 12],
-             [13, 14, 17, 18, 21, 22],
-             [15, 16, 19, 20, 23, 24],
-             [31, 32, 35, 36, 27, 28],
-             [29, 30, 33, 34, 25, 26]]
-col_order = [5, 37, 7, 38, 17, 39, 19, 40, 35, 41, 33]
-fields.append([31000000, row_order, col_order])
-fields.append([31100000, row_order, col_order])
 
-def get_positions(field_base_id, row_order, col_order):
+def scatter_histogram(x, y, hist_x_max=None, hist_y_max=None,
+                      xlabel="Magnitude (mag)",
+                      ylabel="Residuals (stdevs)"):
+    nullfmt = NullFormatter() # no labels
+    bins = 200
+    ylim = (-20, 20)
+    xlim = (0, 20)
+
+    plot_info = dict()
+
+    gs = gridspec.GridSpec(3, 3)
+    gs.update(wspace=0.05, hspace=0.05)
+    ax_scatter = plt.subplot(gs[0:2, 0:2])
+    ax_x_hist = plt.subplot(gs[2, 0:2])
+    ax_y_hist = plt.subplot(gs[0:2, 2])
+
+    ax_scatter.set_xlim(xlim)
+    ax_scatter.set_ylim(ylim)
+    ax_scatter.scatter(x, y, marker='.')
+
+    data = ax_x_hist.hist(x, bins=bins, range=xlim)
+    plot_info['hist_x_max'] = 1.10 * max(data[0])
+    #n, bins, patches = ax_x_hist.hist(x, bins=bins, range=xlim)
+    #plot_info['hist_x_max'] = 1.10 * max(n)
+    #data = ax_y_hist.hist(y, bins=bins, range=ylim, orientation='horizontal')
+    #plot_info['hist_y_max'] = 1.10 * max(data[0])
+    n, bins, patches = ax_y_hist.hist(y, bins=bins, range=ylim, orientation='horizontal')
+    plot_info['hist_y_max'] = 1.10 * max(n)
+
+    params = [1000, 0, 1]
+    x_bins = bins[0:-1]
+    results = least_squares(gaussian_func, params, args=(x_bins, n))
+    A, mu, sigma = results.x
+    n_fit = gaussian_func(results.x, x_bins, np.zeros(len(n)))
+    ax_y_hist.plot(n_fit, x_bins)
+    label = '$A=%0.4f$\n$\mu=%0.4f$\n$\sigma=%0.4f$' % (A, mu, sigma)
+    ax_y_hist.text(0.05, 0.95, label, transform=ax_y_hist.transAxes, fontsize=10,
+        verticalalignment='top')
+
+    # set styling properties
+    # scatter plot
+    ax_scatter.set_ylabel(ylabel)
+    ax_scatter.grid()
+    ax_scatter.xaxis.set_major_formatter(nullfmt)
+
+    # x-histogram
+    ax_x_hist.set_xlabel(xlabel)
+    ax_x_hist.grid()
+    ax_x_hist.set_xlim(xlim)
+    if hist_x_max != None:
+        ax_x_hist.set_ylim((0, hist_x_max))
+    else:
+        ax_x_hist.set_ylim((0, plot_info['hist_x_max']))
+
+    # y-histogram
+    ax_y_hist.set_ylim(ylim)
+    if hist_y_max != None:
+        ax_y_hist.set_xlim((0, hist_y_max))
+    else:
+        ax_y_hist.set_xlim((0, plot_info['hist_y_max']))
+    ax_y_hist.yaxis.set_major_formatter(nullfmt)
+    ax_y_hist.grid()
+    ax_y_hist.legend()
+
+
+    return plot_info
+
+def gaussian_func(params, x, y):
+    A, mu, sigma = params
+    resid =  (A * np.exp(-(x-mu)**2 / sigma)) - y
+    return resid
+
+
+def get_positions(pointings, pointing_info):
     """Computes the positions of the vertexes in a graph given the row and
     column order of the vertexes.
     Returns a dictionary"""
 
-    num_rows = len(row_order)
-    num_cols = len(row_order[0])
+    output = dict()
+    for pointing in pointings:
+        output[pointing] = pointing_info[pointing]
 
-    pos = dict()
-
-    for row in range(0, num_rows):
-        data = row_order[row]
-        for col in range(0, num_cols):
-            cell_id = data[col]
-            pos[field_base_id + cell_id] = (col, row)
-
-    # find the column
-    col = row_order[0].index(col_order[0])
-    for row in range(0, len(col_order)):
-        if row % 2 == 0:
-            continue
-
-        cell_id = col_order[row]
-        pos[field_base_id + cell_id] = (col - 0.25, float(row)/2)
-
-    return pos
+    return output
 
 def read_sro_dat_file(filename):
     """Reads in a SRO .dat file to a numpy associative array."""
@@ -91,7 +148,29 @@ def read_sro_dat_file(filename):
     data = np.loadtxt(filename, dtype=dtype)
     return data
 
+def read_sro_centers(filename):
+    """Reads in a SRO center text file and returns an associative array
+    containing field_id -> (ra,dec) centers"""
+
+    output = dict()
+    with open(filename, 'r') as infile:
+        for line in infile:
+            if line[0] == "#":
+                continue
+            line = line.strip()
+            line = line.split()
+
+            # output[field_id] = (ra, dec)
+            field_id = str(line[0].strip())
+            ra       = float(line[1].strip())
+            dec      = float(line[2].strip())
+            output[field_id] = (ra, dec)
+
+    return output
+
 def main():
+    global fig_residuals_in
+    global fig_residuals_out
 
     parser = argparse.ArgumentParser(
         description="Merges SRO .dat files together into a coherent photometric reference frame.")
@@ -102,6 +181,9 @@ def main():
 
     start = time.time()
 
+    # read in the pointing information
+    pointing_dict = read_sro_centers('data/sro_apass_centers.txt')
+
     # read in the data and overlaping node graph data structure
     data, G = read_data(args.input)
     # enable to see the graph corresponding to the linkages between fields
@@ -111,39 +193,35 @@ def main():
     # Create a vertex that we can use to quickly look up all fields
     # belonging to a given field_base_id. Insert edges to link it all
     # together.
-    for field_base_id, row_order, col_order in fields:
-        field_ids = []
-        for row in row_order:
-            for field in row:
-                field_ids.append(field_base_id + field)
+    for field_base_id, pointings in fields:
 
-        for field in col_order:
-            field_ids.append(field_base_id + field)
-
-        field_ids = list(set(field_ids))
         field_name = get_field_name(field_base_id)
         G.add_node(field_name)
-        for field in field_ids:
-            G.add_edge(field_name, field)
+        for pointing in pointings:
+            G.add_edge(field_name, pointing)
 
     # enable to see graph with field_base_id attachments
     #nx.draw_networkx(G)
     #plt.show()
 
     # now process each field and merge things together
-    for field_base_id, row_order, col_order in fields:
+    for field_base_id, pointings in fields:
         print "Merging field %s" % (field_base_id)
+
+        fig_residuals_in = dict(x=list(), y=list())
+        fig_residuals_out = dict(x=list(), y=list())
 
         field_name = get_field_name(field_base_id)
         neighbors = nx.all_neighbors(G, field_name)
         sub_G = G.subgraph(neighbors)
         # enable to see the graph
         plt.figure(num=None, figsize=(15,15))
-        pos = get_positions(field_base_id, row_order, col_order)
+        fig_graph_id = plt.gcf().number
+        pos = get_positions(pointings, pointing_dict)
         nx.draw_networkx(sub_G, pos=pos)
         labels = nx.get_edge_attributes(sub_G,'weight')
         nx.draw_networkx_edge_labels(sub_G, pos, edge_labels=labels)
-        plt.savefig(apass_save_dir + str(field_base_id) + ".png")
+        plt.savefig(apass_save_dir + str(field_base_id) + "-graph.png")
 
         # find the node with the most edges and start there
         edges = sub_G.edges(data=True)
@@ -153,7 +231,7 @@ def main():
 
         # merge the fields together.
         G.node[start_node_id]['merged'] = True
-        print "Starting at node %i" % (start_node_id)
+        print "Starting at node %s" % (start_node_id)
         # initial merging method, follows the path of greatest weight through the
         # graph.
         #merge_by_greatest_weight(start_node_id, data, sub_G)
@@ -163,6 +241,22 @@ def main():
         # third merging method
         wavefront = sub_G.neighbors(start_node_id)
         merge_by_wavefront(data, wavefront, sub_G)
+
+        # create two figures for residuals
+        plt.figure()
+        plt.suptitle("Output properties for field %i" % (field_base_id))
+        x = fig_residuals_out['x']
+        y = fig_residuals_out['y']
+        plot_info = scatter_histogram(x,y)
+        plt.savefig(apass_save_dir + str(field_base_id) + "-residuals_out.png")
+
+        plt.figure()
+        plt.suptitle("Input properties for field %i" % (field_base_id))
+        x = fig_residuals_in['x']
+        y = fig_residuals_in['y']
+        scatter_histogram(x,y, hist_y_max=plot_info['hist_y_max'])
+        plt.savefig(apass_save_dir + str(field_base_id) + "-residuals_in.png")
+
 
         # verify that everyone was merged in
         for node_id in sub_G.nodes():
@@ -287,11 +381,14 @@ def merge_by_wavefront(data, wavefront, G):
 
 def merge_pointings(data, field_i, neighbors, G):
 
+    global fig_residuals_in
+    global fig_residuals_out
+
     # generate a message
     msg = ""
     for field_j in neighbors:
-        msg += "%i " % (field_j)
-    print " Merging %i into the frames of %s " % (field_i, msg)
+        msg += "%s " % (field_j)
+    print " Merging %s into the frames of %s " % (field_i, msg)
 
     # generate a list of rows from which we will extract values.
     data_row_pairs = []
@@ -326,26 +423,22 @@ def merge_pointings(data, field_i, neighbors, G):
         good_rows[filter_id] += params[0]
         merge_field_data[good_value_indexes] = good_rows
 
-        #plt.subplot(3,1,1)
-        #point_num = np.arange(0, len(x))
-        #plt.errorbar(point_num, x, xerr=x_sig, fmt='o')
-        #plt.errorbar(point_num, y, xerr=y_sig, fmt='o')
-        #plt.title("Input magnitude values")
+        # don't include B-V in plots
+        if filter_id == "B_V":
+            continue
 
-        #residuals_in = delta_mag_func([0], x, y, x_sig, y_sig)
-        #chi_2_in = sum(residuals_in)
-        #residuals_out = results.fun
-        #chi_2_out = sum(residuals_out)
+        x = x.tolist()
 
-        #plt.subplot(3,1,2)
-        #plt.scatter(point_num, residuals_in )
-        #plt.scatter(point_num, residuals_out)
-        #plt.title("Residuals")
+        residuals_in = delta_mag_func([0], x, y, x_sig, y_sig)
+        residuals_in = residuals_in.tolist()
+        fig_residuals_in['x'].extend(x)
+        fig_residuals_in['y'].extend(residuals_in)
 
-        #plt.subplot(3,1,3)
-        #plt.hist(residuals_in, bins=20)
-        #plt.hist(residuals_out, bins=20)
-        #plt.show()
+        residuals_out = results.fun
+        residuals_out = residuals_out.tolist()
+        fig_residuals_out['x'].extend(x)
+        fig_residuals_out['y'].extend(residuals_out)
+
 
     # copy the data we modified back into the main data array
     data[indexes] = merge_field_data

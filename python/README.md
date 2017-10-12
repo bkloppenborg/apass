@@ -114,15 +114,19 @@ After this command executes, you will find directory contents similar to the fol
     
     ~/workspace/apass/python$ ls /home/data/apass-test/ | head -n 10
     global.json
-    z00001-border-rects.json
-    z00001-container.fredbin
-    z00001-contrib.txt
-    z00001.fredbin
-    z00001-zone.json
-    z00008-border-rects.json
-    z00008-container.fredbin
-    z00008-contrib.txt
-    z00008.fredbin
+    ...
+    z00650-border-rects.json
+    z00650-container.fredbin
+    z00650-contrib.txt
+    z00650.fredbin
+    z00650-zone.json
+    z00652-border-rects.json
+    z00652-container.fredbin
+    z00652-contrib.txt
+    z00652.fredbin
+    z00652-zone.json
+    ...
+
 
 The `*-container.fredbin` files contain the same data as the previous `.fredbin`
 files, but are now sorted/grouped by star and contain non-zero entries for the
@@ -136,16 +140,23 @@ parses data found in the APASS save directory, so simply run the script as
 follows:
 
     ~/workspace/apass/python fix-zone-overlaps.py -j 8 
+    Processing polar zones 
+    
     Processing Zone: 1
-     checking for overlaps with z00001n00171c00060
-      merging z00001n00171c00060 
-      updating border rect file for zone 1
-     checking for overlaps with z00001n00170c00062
-     checking for overlaps with z00001n00170c00063
-    Processing Zone: 1
-     checking for overlaps with z00001n00170c00062
-     checking for overlaps with z00001n00170c00063
-    Processing Zone: 8
+    Processing Zone: 0
+    
+    Processing first/last row
+    
+    Processing Zone: 84
+    ...
+    
+    Processing all remaining zones
+    Processing Zone: 132
+    Processing Zone: 4094
+     merging z03331n00085c00138 
+     merging z03331n00085c00138 
+     merging z01968n00170c00037 
+     merging z01968n00170c00037 
     ...
 
 After this command completes, there will not be any new files. Instead, the script
@@ -200,5 +211,5 @@ but has an additional step:
     fred-to-zone.py [-j N] *.fred
     zone-to-rect.py [-j N] *.fredbin
     fix-zone-overlaps.py [-j N]
-    sro-rect-to-data.py [-j N] *-container.fredbinA
-    sro-merge-dat.py
+    sro-rect-to-data.py [-j N] *-container.fredbin
+    sro-merge-dat.py *.dat

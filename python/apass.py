@@ -9,8 +9,8 @@ import json
 from copy import copy
 
 # global configuration settings for the APASS Project
-#apass_save_dir = '/home/data/sro-test/'
-apass_save_dir = '/2/home/kloppenb/dr10-test/'
+apass_save_dir = '/home/data/sro-test/'
+#apass_save_dir = '/2/home/kloppenb/dr10-test/'
 ccd_radius = 2500
 min_num_observations = 3
 num_filters = 6
@@ -43,7 +43,7 @@ fredbin_col_names.extend(fredbin_extra_cols)
 fredbin_col_types = copy(fred_col_types)
 fredbin_extra_types = ['int32', 'int32', 'int32']
 fredbin_col_types.extend(fredbin_extra_types)
-fredbin_savetxt_fmt = ['%03.6f', '%03.6f', '%02.6f', '%02.6f', '%d', '%d', '%02.6f', '%02.6f', '%6i', '%6i', '%s25', '%i', '%02.6f', '%02.6f', '%02.6f', '%6i', '%6i', '%6i', '%6i', '%6i']
+fredbin_savetxt_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d', '%d', '%02.6f', '%02.6f', '%6i', '%6i', '%11s', '%03i', '%02.6f', '%02.6f', '%02.6f', '%6i', '%6i', '%6i', '%6i', '%6i']
 
 # data format for output data
 data_col_names = ['name', 'ra', 'ra_err', 'dec', 'dec_err', 'nobs', 'mobs', 'mag1', 'mag2', 'mag3', 'mag4', 'mag5', 'mag6', 'mag_err1', 'mag_err2', 'mag_err3', 'mag_err4', 'mag_err5', 'mag_err6']
