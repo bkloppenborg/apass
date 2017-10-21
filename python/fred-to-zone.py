@@ -86,48 +86,48 @@ def remove_fred(filename):
     """Removes the data found in the specified file."""
 
     data_dict = build_data_dict(filename)
-
     impacted_zones = []
 
-    # Write out the data being sure to lock all related files prior to opening
-    for zone_id, data in data_dict.iteritems():
+    if data_dict is not None:
+        # Write out the data being sure to lock all related files prior to opening
+        for zone_id, data in data_dict.iteritems():
 
-        # print out a message to inform the user of progress.
-        print("Checking zone %i" % (zone_id))
-        data_removed = False
+            # print out a message to inform the user of progress.
+            print("Checking zone %i" % (zone_id))
+            data_removed = False
 
-        zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
-        contrib_filename = apass_save_dir + '/' + name_zone_contrib_file(zone_id)
+            zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
+            contrib_filename = apass_save_dir + '/' + name_zone_contrib_file(zone_id)
 
-        with FileLock(zone_filename):
-            zone_data = apass.read_fredbin(zone_filename)
+            with FileLock(zone_filename):
+                zone_data = apass.read_fredbin(zone_filename)
 
-            zone_data = np.sort(zone_data, order=['ra', 'dec'])
-            num_data = len(zone_data)
+                zone_data = np.sort(zone_data, order=['ra', 'dec'])
+                num_data = len(zone_data)
 
-            # find the indices of the corresponding data points
-            # ensure that the data match *exactly)
-            indices = []
-            for datum in data:
-                index = np.searchsorted(zone_data, datum)
-                if index >= num_data:
-                    continue
+                # find the indices of the corresponding data points
+                # ensure that the data match *exactly)
+                indices = []
+                for datum in data:
+                    index = np.searchsorted(zone_data, datum)
+                    if index >= num_data:
+                        continue
 
-                same_point = apass.compare_fred_data(datum, zone_data[index])
-                if same_point:
-                    indices.append(index)
-                    data_removed = True
+                    same_point = apass.compare_fred_data(datum, zone_data[index])
+                    if same_point:
+                        indices.append(index)
+                        data_removed = True
 
-            print("Deleting %i entries from zone %i" % (len(indices), zone_id))
-            zone_data = np.delete(zone_data, indices)
+                print("Deleting %i entries from zone %i" % (len(indices), zone_id))
+                zone_data = np.delete(zone_data, indices)
 
-            # write the file
-            with open(zone_filename, 'w+b') as outfile:
-                for datum in zone_data:
-                    outfile.write(datum)
+                # write the file
+                with open(zone_filename, 'w+b') as outfile:
+                    for datum in zone_data:
+                        outfile.write(datum)
 
-        if data_removed:
-            impacted_zones.append(zone_id)
+            if data_removed:
+                impacted_zones.append(zone_id)
 
 
     return impacted_zones
