@@ -27,6 +27,8 @@ import warnings
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 
 # the maximum radius for which the field flattener works correctly
+sro_ccd_x_center = 2048 # pixels
+sro_ccd_y_center = 2048 # pixels
 sro_max_ccd_radius = 3072.0 / 2
 sro_filter_ids = [2, 3, 8, 9, 10] # B, V, sg, sr, si
 sro_num_filters = len(sro_filter_ids) + 1 # we write out V, (B-V), B, sg, sr, si)
@@ -35,6 +37,25 @@ sro_min_num_observations = 3
 # The output looks like this
 ##  Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs       filt  mag  err
 #0020131545  11.198035  0.477 -32.933803  0.396    3   12 12.828  0.931 13.758 13.245 12.593 12.471  0.159  0.164  0.039  0.036  0.088  0.289
+
+def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius):
+    """Filters """
+
+    # filter out measurements outside of a specific radius from the center
+    # of the CCD
+    radius = (max_ccd_radius)**2
+    radius_2 = radius*radius
+
+    # Compute the (x,y) location of the stars relative to the center of the CCD
+    x = data['ccdx'] - x_center
+    y = data['ccdy'] - y_center
+    ccd_radius_2 = x*x + y*y
+
+    # filter by CCD radius these data are always used
+    indexes = np.where(ccd_radius_2 < radius_2)
+    data['use_data'][indexes] = True
+
+    return data
 
 def average_by_field(container):
     """Parses the measurements contained within a container and averages the photometry
@@ -70,28 +91,13 @@ def average_by_field(container):
     dec = average(data['dec'])
     dec_sig = std(data['dec'])
 
-    # filter out measurements outside of a specific radius from the center
-    # of the CCD
-    center = 2048
-    radius = (sro_max_ccd_radius)**2
-    radius_2 = radius*radius
-
-    # Compute the (x,y) location of the stars relative to the center of the CCD
-    x = data['ccdx'] - center
-    y = data['ccdy'] - center
-    ccd_radius_2 = x*x + y*y
-
-    # look up all of the field and filter IDs, we'll use these later.
-    field_ids  = set(data['field'])
-    filter_ids = set(data['filter_id'])
-
     ##
     # Filtering Stages
     ##
+    data = filter_by_ccd_radius(data, sro_ccd_x_center, sro_ccd_y_center, sro_max_ccd_radius)
 
-    # filter by CCD radius these data are always used
-    indexes = np.where(ccd_radius_2 < radius_2)
-    data['use_data'][indexes] = True
+    field_ids  = set(data['field'])
+    filter_ids = set(data['filter_id'])
 
     # if the radius test caused a filter to have fewer than N observations, restore
     # all of the measurements for that filter_id
@@ -110,7 +116,6 @@ def average_by_field(container):
         container_id = data['container_id'][0]
         print("WARNING: No measurements passed filtering for zone %i node %i container %i" % (zone_id, node_id, container_id))
         return ""
-
 
     # Now average the photometry on a per-field basis:
     output = []
