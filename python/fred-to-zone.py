@@ -32,7 +32,11 @@ def build_data_dict(filename):
 
     # read the fred file into a numpy array
     print("Processing FRED file " + filename)
-    data = read_fred(filename)
+    try:
+        data = read_fred(filename)
+    except ValueError:
+        print("ERROR: The file %s has an error and was not parsed" % (filename))
+        return None
 
     # process every file, inserting it into a .dat file. Keep track of any
     # files that were opened in the open_files set
@@ -60,20 +64,21 @@ def add_fred(filename):
     data_dict = build_data_dict(filename)
     impacted_zones = []
 
-    # Write out the data being sure to lock all related files prior to opening
-    for zone_id, data in data_dict.iteritems():
-        zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
-        contrib_filename = apass_save_dir + '/' + name_zone_contrib_file(zone_id)
+    if data_dict is not None:
+        # Write out the data being sure to lock all related files prior to opening
+        for zone_id, data in data_dict.iteritems():
+            zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
+            contrib_filename = apass_save_dir + '/' + name_zone_contrib_file(zone_id)
 
-        with FileLock(zone_filename):
-            with open(zone_filename, 'a+b') as outfile:
-                for datum in data:
-                    outfile.write(datum)
+            with FileLock(zone_filename):
+                with open(zone_filename, 'a+b') as outfile:
+                    for datum in data:
+                        outfile.write(datum)
 
-            with open(contrib_filename, 'a+') as outfile:
-                outfile.write(filename + "\n")
+                with open(contrib_filename, 'a+') as outfile:
+                    outfile.write(filename + "\n")
 
-        impacted_zones.append(zone_id)
+            impacted_zones.append(zone_id)
 
     return impacted_zones
 
