@@ -70,7 +70,7 @@ def add_fred(filename):
             zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
             contrib_filename = apass_save_dir + '/' + name_zone_contrib_file(zone_id)
 
-            with FileLock(zone_filename):
+            with FileLock(zone_filename, timeout=100, delay=0.05):
                 with open(zone_filename, 'a+b') as outfile:
                     for datum in data:
                         outfile.write(datum)
