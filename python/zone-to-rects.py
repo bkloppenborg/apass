@@ -241,5 +241,17 @@ def main():
         pool.close()
         pool.join()
 
+    # write out a file containing information on the containers modified.
+    mod_file = apass_save_dir + "zone-to-rects-modified-files.txt"
+    with open(mod_file, 'w') as outfile:
+        for filename in args.input:
+            path,fredbin_filename = os.path.split(filename)
+            zone_id = apass.zone_from_name(fredbin_filename)
+            filename = apass.name_zone_container_file(zone_id)
+            outfile.write(apass_save_dir + filename + "\n")
+
+    print("A list of modified files has been written to %s" % (mod_file))
+
+
 if __name__ == "__main__":
     main()

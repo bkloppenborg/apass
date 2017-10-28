@@ -156,11 +156,11 @@ def main():
         fred_func = remove_fred
 
     # set up the pool and launch the function
-    result = []
+    results = []
     if args.debug:
         for filename in args.input:
             r = fred_func(filename)
-            result.extend(r)
+            results.extend(r)
     else:
         pool = mp.Pool(args.jobs)
 
@@ -170,13 +170,22 @@ def main():
         pool.join()
 
         for r in pool_result:
-            result.extend(r)
+            results.extend(r)
 
-    # print out a unique list of zones that were impacted by the operation.
-    result = set(result)
-    print("The following zones were impacted:")
-    for zone_id in result:
-        print zone_id
+    # determine the zone files impacted by this operation:
+    zone_names = []
+    zone_ids = sorted(set(results))
+    for zone_id in zone_ids:
+        filename = apass.name_zone_file(zone_id)
+        zone_names.append(filename)
+
+    # write out a file containing information on the zones modified.
+    mod_file = apass_save_dir + "fred-to-zone-modified-files.txt"
+    with open(mod_file, 'w') as outfile:
+        for filename in zone_names:
+            outfile.write(apass_save_dir + filename + "\n")
+
+    print("A list of modified files has been written to %s" % (mod_file))
 
 
 if __name__ == "__main__":
