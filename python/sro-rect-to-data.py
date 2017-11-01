@@ -38,7 +38,8 @@ sro_min_num_observations = 3
 ##  Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs       filt  mag  err
 #0020131545  11.198035  0.477 -32.933803  0.396    3   12 12.828  0.931 13.758 13.245 12.593 12.471  0.159  0.164  0.039  0.036  0.088  0.289
 
-def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius):
+def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius,
+                         min_num_observations = 3):
     """Filters """
 
     # filter out measurements outside of a specific radius from the center
@@ -55,21 +56,75 @@ def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius):
     indexes = np.where(ccd_radius_2 < radius_2)
     data['use_data'][indexes] = True
 
+    # if there are fewer than 'min_num_observations' in a given photometric filter,
+    # restore the observations.
+    filter_ids = set(data['filter_id'])
+    for filter_id in filter_ids:
+        indexes = np.where(data['filter_id'] == filter_id)
+        temp = data[indexes]
+        if sum(temp['use_data']) < min_num_observations:
+            data['use_data'][indexes] = True
+
     return data
 
 def average_by_field(container):
-    """Parses the measurements contained within a container and averages the photometry
-    for each field number.
+    """Parses the measurements within a container and averages the data by field.
 
-    This function returns:
-    1. A list of string containing the averaged data
-    2. A list of field IDs stored in this container.
+    This function returns a nested dictionary whose keys are the field IDs and values
+    correspond to the output of average_container below.
+    """
+
+    output = []
+
+    # Get a list of the unique field IDs in the container
+    dtype={'names': apass.fredbin_col_names, 'formats': apass.fredbin_col_types}
+    data = np.asarray(container.data, dtype=dtype)
+
+    x            = (container.rect.x_max + container.rect.x_min) / 2
+    y            = (container.rect.y_max + container.rect.y_min) / 2
+    zone_id      = container.zone_id
+    node_id      = container.node_id
+    cont_id = container.container_id
+
+    # Iterate over the fields stored in this container and compute their average.
+    field_ids  = set(data['field'])
+    for field_id in field_ids:
+        indexes = np.where(data['field'] == field_id)
+        t_data = data[indexes]
+        t_container = RectContainer(x, y, t_data, zone_id, node_id, cont_id)
+        ave_data = average_container(t_container)
+        output.append(ave_data)
+
+    return output
+
+def average_container(container):
+    """Parses the measurements contained within a container and averages the data.
+
+    If there are data in this container, this function will return a dictionary
+    with the following information:
+
+    - ra - Average Right Ascention
+    - ra_sig - uncertainty on Right Ascention
+    - dec - Average Declination
+    - dec_sig - uncertainty on Declination
+    - filter_ids - list containing the identifiers of the filters in this data set
+    - mags - list containing averaged magnitudes
+    - mags_sig - list containing standard deviation on magnitudes
+    - num_nights - list containing the number of nights an object was observed
+    - num_obs - list containing the number of observations of an object
+    - container_size - pair representing size of container in (RA, DEC) order
+
+    The lists mags, mags_sig, num_nights, and num_obs are in the same order as filter_ids.
+
+    If there is no data in this container, the function will return an empty dictionary.
     """
 
     # A container should store data on precisely one star, but that data will
     # be taken through multiple photometric filters and potentially originate from
     # multiple fields (telescope pointings). In this function, we average
     # the photometry for each field and generate one output line for each field.
+
+    output = dict()
 
     # Read in the data. This will be a numpy.narray object, so we can slice
     # and dice it however we would like.
@@ -81,161 +136,208 @@ def average_by_field(container):
     tmp = np.zeros(len(data))
     data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
 
-    # if the container holds no data, immediately return an empty string
+    # if there is no data in the container or it has been moved, return an empty dictionary.
     if len(data) == 0 or container.moved == True:
-        return ""
+        return output
 
     # Compute the average RA and DEC using data from all measurements
-    ra = average(data['ra'])
-    ra_sig = std(data['ra'])
-    dec = average(data['dec'])
-    dec_sig = std(data['dec'])
+    rect = container.rect
+    output['ra']             = average(data['ra'])
+    output['ra_sig']         = std(data['ra'])
+    output['dec']            = average(data['dec'])
+    output['dec_sig']        = std(data['dec'])
+    output['container_size'] = (rect.x_max - rect.x_min, rect.y_max - rect.y_min)
+    output['mags']           = []
+    output['mags_sig']       = []
+    output['num_nights']     = []
+    output['num_obs']        = []
+    output['field']          = data['field'][0]
 
     ##
     # Filtering Stages
     ##
-    data = filter_by_ccd_radius(data, sro_ccd_x_center, sro_ccd_y_center, sro_max_ccd_radius)
+    data = filter_by_ccd_radius(data, sro_ccd_x_center, sro_ccd_y_center, sro_max_ccd_radius,
+                                min_num_observations = sro_min_num_observations)
 
-    field_ids  = set(data['field'])
-    filter_ids = set(data['filter_id'])
+    # get a list of filters in numerical order
+    filter_ids = sorted(set(data['filter_id']))
+    output['filter_ids'] = filter_ids
 
-    # if the radius test caused a filter to have fewer than N observations, restore
-    # all of the measurements for that filter_id
+    # iterate over the filters extracting the relevant statistics
     for filter_id in filter_ids:
-        indexes = np.where(data['filter_id'] == filter_id)
-        temp = data[indexes]
-        if sum(temp['use_data']) < sro_min_num_observations:
-            data['use_data'][indexes] = True
-
-    # If no observations passed the filtering stage, we have a serious problem.
-    # Print out a notification and return an empty string. We'll have to let the user
-    # figure out what to do.
-    if sum(data['use_data']) == 0:
-        zone_id = data['zone_id'][0]
-        node_id = data['node_id'][0]
-        container_id = data['container_id'][0]
-        print("WARNING: No measurements passed filtering for zone %i node %i container %i" % (zone_id, node_id, container_id))
-        return ""
-
-    # Now average the photometry on a per-field basis:
-    output = []
-    for field_id in field_ids:
-        indexes = np.where((data['field'] == field_id))
+        # extract the data in this filter
+        indexes = np.where((data['filter_id'] == filter_id) & (data['use_data'] == True))
         t_data = data[indexes]
 
-        mags = average_magnitudes(t_data, filter_ids)
+        # total number of observations, total number of nights.
+        num_obs = len(t_data)
+        num_nights = len(set(t_data['hjd']))
 
-        # compute the number of observations and number of nights that made it through filtering
-        num_observations = len(t_data)
-        num_nights = len(set(t_data['night']))
-
-        # construct the output string
-        prefix_fmt = "%25s %10.6f %6.3f %10.6f %6.3f %4i %4i"
-        mag_fmt = "%6.3f"
-        # Start with the following information
-        #  # Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs
-        #  # 0020131545  11.198035  0.477 -32.933803  0.396    3   12
-        line = (prefix_fmt) % (field_id, ra, ra_sig, dec, dec_sig, num_nights, num_observations)
-        # now follow up with magnitudes and errors. Note that APASS splits them as
-        #  (mag1, ..., magN, err1, ..., errN)
-
-        # Loop over the filters and apply any custom reorganization to them.
-        out_mags = []
-        out_mag_sigs = []
-        for filter_id in range(1, sro_num_filters + 1):
-
-            # SRO filters are computed as follows
-            # index | out <- in
-            #   1 <- 3
-            #   2 <- (2 - 3)
-            #   3 <- 2
-            #   4 <- 8
-            #   5 <- 9
-            #   6 <- 10
-            # we mirror this here
-            if filter_id == 1:
-                mag, mag_sig = read_mags(mags, 3)
-            elif filter_id == 2:
-                mag2, mag2_sig = read_mags(mags, 2)
-                mag3, mag3_sig = read_mags(mags, 3)
-
-                if mag2 == 99.999 or mag3 == 99.999:
-                    mag = 99.999
-                    mag_sig = 99.999
-                else:
-                    mag = mag2 - mag3
-                    mag_sig = sqrt(mag2_sig**2 + mag3_sig**2)
-            elif filter_id == 3:
-                mag, mag_sig = read_mags(mags, 2)
-            elif filter_id == 4:
-                mag, mag_sig = read_mags(mags, 8)
-            elif filter_id == 5:
-                mag, mag_sig = read_mags(mags, 9)
-            elif filter_id == 6:
-                mag, mag_sig = read_mags(mags, 10)
-
-
-            out_mags.append(mag)
-            out_mag_sigs.append(mag_sig)
-
-        # write out the magnitudes
-        for filter_id in range(0, sro_num_filters):
-            line += " " + (mag_fmt) % (out_mags[filter_id])
-
-        # and the corresponding uncertainties
-        for filter_id in range(0, sro_num_filters):
-            line += " " + (mag_fmt) % (out_mag_sigs[filter_id])
-
-        output.append(line)
-
-    # All done, return the string.
-    if len(output) != len(field_ids):
-        raise "Field averages and number of fields do not match!"
-
-    return output, field_ids
-
-def average_magnitudes(data, filter_ids):
-
-    # compute the magnitudes
-    mags = dict()
-    for filter_id in filter_ids:
-        # extract known-good measurements for this filter
-        indexes = np.where((data['filter_id'] == filter_id) & (data['use_data'] == True))
-        temp = data[indexes]
-        num_obs = len(temp)
+        mag     = 99.999
+        mag_sig = 99.999
 
         if num_obs > 0:
-
-            # compute the average and standard deviation for the magnitude.
-            # NOTE: Using standard error propigation methods, e.g.
-            #        mag_sig = sqrt(sum(error_i^2) / N
-            #       double-counts the nightly photometric (Poisson) error.
-            #       Arne indicates we should instead use std(mag) to avoid this problem
-            # If there is only one observation, copy the error.
-            mag = average(temp['xmag1'])
+            # magnitude and its uncertainty
+            mag = average(t_data['xmag1'])
             if num_obs > 1:
-                mag_sig = std(temp['xmag1'])
+                mag_sig = std(t_data['xmag1'])
             else:
-                mag_sig = temp['xerr1']
+                mag_sig = t_data['xmag1']
 
-        else:
-            mag = 99.999
-            mag_sig = 99.999
+        # store the data in the output dictionary
+        output['mags'].append(mag)
+        output['mags_sig'].append(mag_sig)
+        output['num_nights'].append(num_nights)
+        output['num_obs'].append(num_obs)
 
-        mags[filter_id] = {'mag': mag, 'sig': mag_sig, 'num': num_obs}
+    return output
 
-    return mags
 
-def read_mags(mags_dict, filter_id):
+def container_to_string(container_ave, photometry_format_func):
+    """Converts average container dictionary to a formatted string
+
+    Output will be as follows:
+    - field_id
+    - ra
+    - ra_sig
+    - dec
+    - dec_sig
+    - total number of nights
+    - total number of observations
+    - [number of nights by filter]
+    - [number of observations by filter]
+    - [mag by filter]
+    - [mag_sig by filter]
+
+    returns a formatted string
+    """
+
+    prefix_fmt = "%25s %10.6f %6.3f %10.6f %6.3f %4i %4i"
+
+    # extract the relevant quantities from the dictionary
+    field_id      = container_ave['field']
+    ra            = container_ave['ra']
+    ra_sig        = container_ave['ra_sig']
+    dec           = container_ave['dec']
+    dec_sig       = container_ave['dec_sig']
+    total_nights  = sum(container_ave['num_nights'])
+    total_num_obs = sum(container_ave['num_obs'])
+
+    # Start with the following information
+    #  # Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs
+    #  # 0020131545  11.198035  0.477 -32.933803  0.396    3   12
+    line = (prefix_fmt) % (field_id, ra, ra_sig, dec, dec_sig, total_nights, total_num_obs)
+
+    # Next up is the photometry. We pass this off to the generation function
+    line += photometry_format_func(container_ave)
+
+    return line
+
+def sro_photometry_format_func(container_ave):
+    """Extracts the photometry from a container and returns a formatted string"""
+
+    # now follow up with magnitudes and errors. Note that APASS splits them as
+    #  (mag1, ..., magN, err1, ..., errN)
+
+    num_obs_fmt = "%3i"
+    mag_fmt = "%6.3f"
+
+    out_mags = []
+    out_mags_sig = []
+    out_num_nights = []
+    out_num_obs = []
+
+    mag = 0
+    mag_sig = 0
+    num_nights = 0
+    num_obs = 0
+
+    # First we iterate over the number of measurements
+    for filter_index in range(1, sro_num_filters + 1):
+
+        # SRO filters are computed as follows
+        # index | out <- in
+        #   1 <- 3
+        #   2 <- (2 - 3)
+        #   3 <- 2
+        #   4 <- 8
+        #   5 <- 9
+        #   6 <- 10
+        # we mirror this here
+        if filter_index == 1:
+            mag, mag_sig, num_nights, num_obs = read_mags(container_ave, 3)
+        elif filter_index == 2:
+            mag2, mag2_sig, num_nights2, num_obs2 = read_mags(container_ave, 2)
+            mag3, mag3_sig, num_nights3, num_obs3 = read_mags(container_ave, 3)
+
+            if mag2 == 99.999 or mag3 == 99.999:
+                mag = 99.999
+                mag_sig = 99.999
+            else:
+                mag = mag2 - mag3
+                mag_sig = sqrt(mag2_sig**2 + mag3_sig**2)
+
+                num_nights = min(num_nights2, num_nights3)
+                num_obs    = min(num_obs2, num_obs3)
+        elif filter_index == 3:
+            mag, mag_sig, num_nights, num_obs = read_mags(container_ave, 2)
+        elif filter_index == 4:
+            mag, mag_sig, num_nights, num_obs = read_mags(container_ave, 8)
+        elif filter_index == 5:
+            mag, mag_sig, num_nights, num_obs = read_mags(container_ave, 9)
+        elif filter_index == 6:
+            mag, mag_sig, num_nights, num_obs = read_mags(container_ave, 10)
+
+        out_mags.append(mag)
+        out_mags_sig.append(mag_sig)
+        out_num_nights.append(num_nights)
+        out_num_obs.append(num_obs)
+
+    # Construct the output line
+    line = ""
+
+    # write out number of nights
+    for nights in out_num_nights:
+        line += " " + (num_obs_fmt) % (nights)
+
+    # write out number of observations
+    for obs in out_num_obs:
+        line += " " + (num_obs_fmt) % (obs)
+
+    # write out the magnitudes
+    for mag in out_mags:
+        line += " " + (mag_fmt) % (mag)
+
+    # and the corresponding uncertainties
+    for mag_sig in out_mags_sig:
+        line += " " + (mag_fmt) % (mag_sig)
+
+    return line
+
+def read_mags(container_ave, filter_id):
     """Reads the magnitude and error from the dictionary for the specified filter."""
+
+    filter_order = container_ave['filter_ids']
+    mags = container_ave['mags']
+    mags_sig = container_ave['mags_sig']
+    num_nights = container_ave['num_nights']
+    num_obs = container_ave['num_obs']
+
     mag = 99.999
     mag_sig = 99.999
+    nights = 0
+    obs = 0
 
-    if filter_id in mags_dict:
-        mag = mags_dict[filter_id]['mag']
-        mag_sig = mags_dict[filter_id]['sig']
+    try:
+        idx = filter_order.index(filter_id)
+        mag = mags[idx]
+        mag_sig = mags_sig[idx]
+        nights = num_nights[idx]
+        obs = num_obs[idx]
+    except ValueError:
+        pass
 
-    return [mag, mag_sig]
+    return [mag, mag_sig, nights, obs]
 
 def zone_to_data(zone_container_filename):
     """Processes all of the rectangles found in zone. Zone should be a valid subdirectory
@@ -260,14 +362,19 @@ def zone_to_data(zone_container_filename):
     with open(dat_filename, 'w') as dat_file:
         for leaf in leaves:
             for container in leaf.containers:
-                output_lines, field_ids = average_by_field(container)
 
-                # save the text data to file, noting what lines it gets
-                # written to
+                # keep track of which line numbers this container contributes
                 line_numbers = []
-                for line in output_lines:
-                    dat_file.write(line + "\n")
+                field_ids = []
+
+                # get averages from the container. Write the results to disk while
+                # also tracking the lines that this container contributes
+                averages = average_by_field(container)
+                for average in averages:
+                    fmt_output = container_to_string(average, sro_photometry_format_func)
+                    dat_file.write(fmt_output + "\n")
                     line_numbers.append(line_no)
+                    field_ids.append(average['field'])
                     line_no += 1
 
                 # for stars that have more than one field, we add this information
