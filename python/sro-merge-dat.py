@@ -23,20 +23,41 @@ import time
 BAD_MAG_VALUE = 90  # anything with a mag greater than 90 is bogus
 MIN_MAG_SIG = 0.001
 
+# An entry in a SRO .dat file is as follows
+# prefix = field_id, ra, ra_sig, dec, dec_sig, total_nights, total_num_obs
+# flags = large_mag_diff, num_obs_diff, large_position_errors, large_bounding_boxes
+# num_nights = []
+# num_obs = []
+# mags = []
+# mags_sig = []
+# where [] are repeated for each of the filters.
+
 # the SRO data format is as follows:
 # field_id, ra, ra_sig, dec, dec_sig, num_nights, num_observations, V, (B-V), B, sg, sr, si
 sro_filter_names =  ['V', 'B_V', 'B', 'sg', 'sr', 'si']
+sro_num_filters = len(sro_filter_names)
 
 sro_col_names = ['field_id', 'ra', 'ra_sig', 'dec', 'dec_sig', 'num_nights', 'num_observations']
+sro_col_names.extend(['large_mag_diff', 'num_obs_diff',
+                      'large_position_errors', 'large_bounding_boxes'])
+sro_col_names.extend(['num_nights_' + s for s in sro_filter_names])
+sro_col_names.extend(['num_obs_' + s for s in sro_filter_names])
 sro_col_names.extend(sro_filter_names)
 sro_col_names.extend([s + "_sig" for s in sro_filter_names])
 
-sro_col_formats = ['%10s', '%10.6f', '%6.3f', '%10.6f', '%6.3f', '%4i', '%4i',
-                   '%6.3f', '%6.3f', '%6.3f', '%6.3f', '%6.3f', '%6.3f',
-                   '%6.3f', '%6.3f', '%6.3f', '%6.3f', '%6.3f', '%6.3f']
-sro_col_types = ['S10', 'float64', 'float64', 'float64', 'float64', 'int', 'int',
-                  'float32', 'float32', 'float32', 'float32', 'float32', 'float32',
-                  'float32', 'float32', 'float32', 'float32', 'float32', 'float32']
+sro_col_formats = ['%10s', '%10.6f', '%6.3f', '%10.6f', '%6.3f', '%4i', '%4i']
+sro_col_formats.extend(['%1i'] * 4)                 # flags
+sro_col_formats.extend(['%3i'] * sro_num_filters)   # num_nights
+sro_col_formats.extend(['%3i'] * sro_num_filters)   # num_obs
+sro_col_formats.extend(['%6.3f'] * sro_num_filters) # mags
+sro_col_formats.extend(['%6.3f'] * sro_num_filters) # mags_sig
+
+sro_col_types = ['S10', 'float64', 'float64', 'float64', 'float64', 'int', 'int']
+sro_col_types.extend(['int'] * 4)                   # flags
+sro_col_types.extend(['int'] * sro_num_filters)     # num_nights
+sro_col_types.extend(['int'] * sro_num_filters)     # num_obs
+sro_col_types.extend(['float32'] * sro_num_filters) # num_obs
+sro_col_types.extend(['float32'] * sro_num_filters) # num_obs
 
 def make_pointings(field_base_id, pointings):
 
@@ -239,7 +260,7 @@ def main():
         # merged neighbors.
         #merge_by_neighbors(data, adj_node_id, G)
         # third merging method
-        wavefront = sub_G.neighbors(start_node_id)
+        wavefront = list(sub_G.neighbors(start_node_id))
         merge_by_wavefront(data, wavefront, sub_G)
 
         # create two figures for residuals
@@ -478,7 +499,7 @@ def read_data(filenames):
         t_G = nx.read_gpickle(base_filename + ".p")
 
         # update the row indicies in the edge data
-        edges = t_G.edges_iter(data=True)
+        edges = t_G.edges(data=True)
         for edge in edges:
             line_ids = edge[2]['line_ids']
             line_ids = [(a+num_rows, b+num_rows) for a,b in line_ids]
@@ -490,9 +511,9 @@ def read_data(filenames):
         num_rows = len(data)
 
     # ensure that all nodes and edges are flagged as not merged.
-    for node in G.nodes_iter(data=True):
+    for node in G.nodes(data=True):
         node[1]['merged'] = False
-    for edge in G.edges_iter(data=True):
+    for edge in G.edges(data=True):
         edge[2]['merged'] = False
 
     print "Read %i entries" % (len(data))
@@ -510,7 +531,7 @@ def merge_graphs(G, t_G):
         if node not in G.nodes():
             G.add_node(node, merged=False)
 
-    for t_edge in t_G.edges_iter(data=True):
+    for t_edge in t_G.edges(data=True):
         t_src  = t_edge[0]
         t_dst  = t_edge[1]
         t_data = t_edge[2]

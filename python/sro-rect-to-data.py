@@ -212,7 +212,6 @@ def container_to_string(container_ave, photometry_format_func):
     returns a formatted string
     """
 
-    prefix_fmt = "%25s %10.6f %6.3f %10.6f %6.3f %4i %4i"
 
     # extract the relevant quantities from the dictionary
     field_id      = container_ave['field']
@@ -226,7 +225,20 @@ def container_to_string(container_ave, photometry_format_func):
     # Start with the following information
     #  # Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs
     #  # 0020131545  11.198035  0.477 -32.933803  0.396    3   12
-    line = (prefix_fmt) % (field_id, ra, ra_sig, dec, dec_sig, total_nights, total_num_obs)
+    prefix = (field_id, ra, ra_sig, dec, dec_sig, total_nights, total_num_obs)
+    prefix_fmt = "%25s %10.6f %6.3f %10.6f %6.3f %4i %4i "
+    line = (prefix_fmt) % prefix
+
+    # now for flags
+
+    flag_large_mag_diff        = False
+    flag_num_obs_diff          = False
+    flag_large_position_errors = False
+    flag_large_bounding_boxes  = False
+    flags = (flag_large_mag_diff, flag_num_obs_diff, flag_large_position_errors,
+             flag_large_bounding_boxes)
+    flags_fmt = "%1i %1i %1i %1i "
+    line += (flags_fmt) % flags
 
     # Next up is the photometry. We pass this off to the generation function
     line += photometry_format_func(container_ave)

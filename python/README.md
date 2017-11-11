@@ -34,12 +34,14 @@ which should be changed prior to execution. See below for further information.
 * pip
 * numpy
 * argparse
+* networkx 2.0
 
 These packages can be installed on a Ubuntu system with the following commands:
 
     sudo apt install python-pip python-numpy python-matplotlib
     pip install numpy argparse matplotlib python-tk
-    pip install nxgraph pydotplus
+    pip install pydotplus
+    pip install 'networkx==1.11'
 
 
 ## Sample reduction run
