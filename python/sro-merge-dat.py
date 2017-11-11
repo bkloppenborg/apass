@@ -429,15 +429,23 @@ def merge_pointings(data, field_i, neighbors, G):
     i,j = map(list, zip(*data_row_pairs))
     for filter_id in sro_filter_names:
 
+        # Extract all valid data
         x, y, x_sig, y_sig = get_good_data(data, i, j, filter_id)
 
+        # Use stars brighter than MAX_MERGE_MAG to determine the deltas between
+        # fields
+        fit_indexes = np.where((x <= MAX_MERGE_MAG) & (y <= MAX_MERGE_MAG))
+        x_t = x[fit_indexes]
+        x_sig_t = x_sig[fit_indexes]
+        y_t = y[fit_indexes]
+        y_sig_t = y_sig[fit_indexes]
 
         # run a least-squares fit between the two fields
         params = [0]
-        results = least_squares(delta_mag_func, params, args=(x, y, x_sig, y_sig))
+        results = least_squares(delta_mag_func, params, args=(x_t, y_t, x_sig_t, y_sig_t))
         params = results.x
 
-        print "  %3s delta: %+f, num: %i" % (filter_id, params[0], len(x))
+        print "  %3s delta: %+f, num: %i" % (filter_id, params[0], len(x_t))
 
         # find filter measurements in the merge field that are valid, copy them
         # out of the array, apply the delta, and copy them back.
@@ -457,7 +465,7 @@ def merge_pointings(data, field_i, neighbors, G):
         fig_residuals_in['x'].extend(x)
         fig_residuals_in['y'].extend(residuals_in)
 
-        residuals_out = results.fun
+        residuals_out = delta_mag_func([params[0]], x, y, x_sig, y_sig)
         residuals_out = residuals_out.tolist()
         fig_residuals_out['x'].extend(x)
         fig_residuals_out['y'].extend(residuals_out)
@@ -563,8 +571,7 @@ def get_good_data(data, i, j, filter_id):
     y_sig = data[j][filter_id + "_sig"]
 
     # remove nonsense/bad values
-    indexes = np.where((x <= BAD_MAG_VALUE) & (y <= BAD_MAG_VALUE) &
-                       (x <= MAX_MERGE_MAG) & (y <= MAX_MERGE_MAG))
+    indexes = np.where((x <= BAD_MAG_VALUE) & (y <= BAD_MAG_VALUE))
     x     = x[indexes]
     y     = y[indexes]
     x_sig = x_sig[indexes]
