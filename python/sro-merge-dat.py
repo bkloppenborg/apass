@@ -23,6 +23,8 @@ import time
 BAD_MAG_VALUE = 90  # anything with a mag greater than 90 is bogus
 MIN_MAG_SIG = 0.001
 
+MAX_MERGE_MAG = 16 # anything fainter than this value will not be used to determine merge weights
+
 # An entry in a SRO .dat file is as follows
 # prefix = field_id, ra, ra_sig, dec, dec_sig, total_nights, total_num_obs
 # flags = large_mag_diff, num_obs_diff, large_position_errors, large_bounding_boxes
@@ -561,7 +563,8 @@ def get_good_data(data, i, j, filter_id):
     y_sig = data[j][filter_id + "_sig"]
 
     # remove nonsense/bad values
-    indexes = np.where((x <= BAD_MAG_VALUE) & (y <= BAD_MAG_VALUE))
+    indexes = np.where((x <= BAD_MAG_VALUE) & (y <= BAD_MAG_VALUE) &
+                       (x <= MAX_MERGE_MAG) & (y <= MAX_MERGE_MAG))
     x     = x[indexes]
     y     = y[indexes]
     x_sig = x_sig[indexes]
