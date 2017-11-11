@@ -214,4 +214,4 @@ but has an additional step:
     zone-to-rect.py [-j N] *.fredbin
     fix-zone-overlaps.py [-j N]
     sro-rect-to-data.py [-j N] *-container.fredbin
-    sro-merge-dat.py *.dat
+    sro-merge-dat.py z*.dat
