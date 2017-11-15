@@ -198,10 +198,10 @@ def container_to_string(container_ave, photometry_format_func):
 
     Output will be as follows:
     - field_id
-    - ra
-    - ra_sig
-    - dec
-    - dec_sig
+    - ra (deg)
+    - ra_sig (arcsecond)
+    - dec (deg)
+    - dec_sig (in arcsecond)
     - total number of nights
     - total number of observations
     - [number of nights by filter]
@@ -216,9 +216,9 @@ def container_to_string(container_ave, photometry_format_func):
     # extract the relevant quantities from the dictionary
     field_id      = container_ave['field']
     ra            = container_ave['ra']
-    ra_sig        = container_ave['ra_sig']
+    ra_sig        = container_ave['ra_sig'] * 3600 # convert to arcsec
     dec           = container_ave['dec']
-    dec_sig       = container_ave['dec_sig']
+    dec_sig       = container_ave['dec_sig'] * 3600 # convert to arcsec
     total_nights  = sum(container_ave['num_nights'])
     total_num_obs = sum(container_ave['num_obs'])
 
