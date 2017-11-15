@@ -182,7 +182,7 @@ def average_container(container):
             if num_obs > 1:
                 mag_sig = std(t_data['xmag1'])
             else:
-                mag_sig = t_data['xmag1']
+                mag_sig = t_data['xerr1']
 
         # store the data in the output dictionary
         output['mags'].append(mag)
