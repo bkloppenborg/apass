@@ -79,15 +79,16 @@ fields.append([31100000, make_pointings(31100000, range(1,42))])
 # Matplotlib figure numbers for specific plots
 fig_residuals_in = None
 fig_residuals_out = None
+fig_uncertanty_vs_mag = None
 
 
 def scatter_histogram(x, y, hist_x_max=None, hist_y_max=None,
                       xlabel="Magnitude (mag)",
-                      ylabel="Residuals (stdevs)"):
+                      ylabel="Residuals (stdevs)",
+                      ylim = (-20, 20),
+                      xlim = (0, 20)):
     nullfmt = NullFormatter() # no labels
     bins = 200
-    ylim = (-20, 20)
-    xlim = (0, 20)
 
     plot_info = dict()
 
@@ -149,7 +150,7 @@ def scatter_histogram(x, y, hist_x_max=None, hist_y_max=None,
     return plot_info
 
 def gaussian_func(params, x, y):
-    A, mu, sigma = params
+    A, mu, sigma = abs(params)
     resid =  (A * np.exp(-(x-mu)**2 / sigma)) - y
     return resid
 
@@ -194,6 +195,7 @@ def read_sro_centers(filename):
 def main():
     global fig_residuals_in
     global fig_residuals_out
+    global fig_uncertainty_vs_mag
 
     parser = argparse.ArgumentParser(
         description="Merges SRO .dat files together into a coherent photometric reference frame.")
@@ -233,6 +235,7 @@ def main():
 
         fig_residuals_in = dict(x=list(), y=list())
         fig_residuals_out = dict(x=list(), y=list())
+        fig_uncertainty_vs_mag = dict(x=list(), y=list())
 
         field_name = get_field_name(field_base_id)
         neighbors = nx.all_neighbors(G, field_name)
@@ -280,6 +283,12 @@ def main():
         scatter_histogram(x,y, hist_y_max=plot_info['hist_y_max'])
         plt.savefig(apass_save_dir + str(field_base_id) + "-residuals_in.png")
 
+        plt.figure()
+        plt.suptitle("Uncertainty vs. magnitude for field %i" % (field_base_id))
+        x = fig_uncertainty_vs_mag['x']
+        y = fig_uncertainty_vs_mag['y']
+        scatter_histogram(x,y, ylim=(-0.5,3), ylabel="Uncertainty (mag)")
+        plt.savefig(apass_save_dir + str(field_base_id) + "-uncertainty-vs-magnitude.png")
 
         # verify that everyone was merged in
         for node_id in sub_G.nodes():
@@ -406,6 +415,7 @@ def merge_pointings(data, field_i, neighbors, G):
 
     global fig_residuals_in
     global fig_residuals_out
+    global fig_uncertainty_vs_mag
 
     # generate a message
     msg = ""
@@ -469,6 +479,9 @@ def merge_pointings(data, field_i, neighbors, G):
         residuals_out = residuals_out.tolist()
         fig_residuals_out['x'].extend(x)
         fig_residuals_out['y'].extend(residuals_out)
+
+        fig_uncertainty_vs_mag['x'].extend(y)
+        fig_uncertainty_vs_mag['y'].extend(y_sig)
 
 
     # copy the data we modified back into the main data array
