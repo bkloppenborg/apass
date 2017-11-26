@@ -368,6 +368,25 @@ def zone_to_data(zone_container_filename):
     apass.load_zone_data(zone_tree, apass.apass_save_dir)
     leaves = zone_tree.get_leaves()
 
+    # Average and flag the data.
+    averages = []
+    mag_rsd = []
+    num_obs = []
+    num_nights = []
+    ra_rsd = []
+    dec_rsd = []
+    bbox_areas = []
+    for leaf in leaves:
+        for container in leaf.container:
+            t_ave = average_by_field(container)
+            averages.extend(t_ave)
+
+            for ave in t_ave:
+                num_filters = len(ave['filter_ids'])
+
+                for i in range(0, num_filters):
+
+
     # process the data
     line_no = 0
     dat_filename = apass.apass_save_dir + "/" + zone_name + ".dat"
