@@ -19,9 +19,10 @@ c mod 18-Jun-2010 aah to use magnitudes instead of mag+multicolor
 c mod 25-Jan-2014 aah to use apass standard file or landolt standard file
 c mod 18-Dec-2014 aah to add zs,Y
 c mod 14-Jun-2017 aah for tera, 64bit SM
+c mod 06-Oct-2017 aah sigma reject
 c
       integer MAXSTARS,MAXC,MAXFILT,MAXFC
-      PARAMETER (MAXSTARS = 70000)
+      PARAMETER (MAXSTARS = 100000)
       PARAMETER (MAXFILT = 14)
       PARAMETER (MAXFC = 2)
       PARAMETER (MAXC = 1)
@@ -34,7 +35,8 @@ c
      $   c(MAXSTARS,MAXC),sm(MAXFILT),se(MAXFILT),
      $   xx(MAXSTARS,MAXFILT),delc(MAXFC),fmag(MAXSTARS),
      $   uerr(MAXSTARS,MAXFILT),x(MAXSTARS,MAXFC),
-     $   xmag(MAXSTARS,MAXFC),ymag(MAXSTARS,MAXFC)
+     $   xmag(MAXSTARS,MAXFC),ymag(MAXSTARS,MAXFC),
+     $   xmag2(MAXSTARS,MAXFC),ymag2(MAXSTARS,MAXFC)
       real*4 tmag(5),terr(5)
       real*4 xk,yk,amag,amagerr,am,xbeg,ybeg,xlen,ylen
       real*4 slope,b,zstar
@@ -43,7 +45,7 @@ c
       INTEGER iiflag,jjflag,jj,magflag
       integer indx(MAXSTARS),ka,kb,nstar,nfirst,nindx
       integer sindx(MAXSTARS,2),nfilt1,nfilt2,nfilt3
-      integer iflagapass
+      integer iflagapass,ntot
       character*30 xlabel,ylabel
       character*50 fileid,raw,input
       character*50 file0,file1,file2,file3
@@ -65,8 +67,8 @@ c
       nc=1
       jjflag = 0
 c ***********************************************************************
-      print *,'                      Program FILTRAN version 2.1'
-      print *,'                          December 17, 2014'
+      print *,'                      Program FILTRAN version 3.2'
+      print *,'                          October 6, 2017'
       print *
 c ************************************************************************
 c
@@ -334,6 +336,9 @@ c read in one star
      $  8x,8x,5x,2x,25x,6x,5x,i5,5x,i7)
 c    $  8x,8x,5x,6x,6x,6x,6x,5x,i5,5x,i7)
       if (istarnew.eq.istar.and.iset.eq.isetnew) then
+c kludge to work with ZS
+        if (filno.eq.13) filno=11
+c kludge to work with ZS
         if(filno.le.MAXFILT) then
         umag(n,filno) = amag
         uerr(n,filno) = amagerr
@@ -540,12 +545,23 @@ c  do the solution with extinction, or only find zero pts + extinction
 c *********
          nn=2
          if(zpt .eq. 'N') then
+c          do i=1,nfit
+c             print *,i,x(i,1),xmag(i,1),xmag(i,2),ymag(i,1),ymag(i,2)
+c          enddo
+           n=1
            do i=1,nfit
-              print *,i,x(i,1),xmag(i,1),xmag(i,2),ymag(i,1),ymag(i,2)
+             if (indx(i).eq.1) then
+               xmag2(n,1) = xmag(i,1)
+               xmag2(n,2) = xmag(i,2)
+               ymag2(n,1) = ymag(i,1)
+               ymag2(n,2) = ymag(i,2)
+               n = n+1
+             endif
            enddo
-           call solve3(nfit,nn,x,xmag,ymag,sext,fext,coef,zero)
+           n = n - 1
+           call solve3(n,nn,x,xmag2,ymag2,sext,fext,coef,zero)
          else
-           call zextinc(1,nfit,nn,x,xmag,ymag,sext,fext,coef,zero,
+           call zextinc(1,n,nn,x,xmag2,ymag2,sext,fext,coef,zero,
      $                 filt,icolor,imag)
          endif
         endif
@@ -570,18 +586,24 @@ c
           read(5,*,err=8004) fext(2)
 c
 c  Solve for coefficients + zero points
+c note: this is only solution modified for deletion
 c
 7500  continue
         if(zpt .eq. 'N') then
+          n = 1
           do i=1,nfit
 c
 c    solve for (smag-umag)o vs (color)
 c
-            y1(i)=xmag(i,1)-ymag(i,1)+fext(1)*x(i,1)+sext(1)*
-     $                ymag(i,2)*x(i,2)
-            x1(i)=xmag(i,2)
+            if (indx(i).eq.1) then
+              y1(n)=xmag(i,1)-ymag(i,1)+fext(1)*x(i,1)+sext(1)*
+     $              ymag(i,2)*x(i,2)
+              x1(n)=xmag(i,2)
+              n = n+1
+            endif
           enddo
-          call lin (x1,y1,nfit,coef(1),zero(1))
+          n = n-1
+          call lin (x1,y1,n,coef(1),zero(1))
 c
 c  plot results and overlay the fit
 c
@@ -604,11 +626,17 @@ c
 c
 c   solve for (stand color-obs color)o vs stand color
 c
-                do 3002 i=1,nfit
-                y1(i)=xmag(i,2)-ymag(i,2)+fext(2)*x(i,2)+sext(2)*
-     $                ymag(i,2)*x(i,2)
-3002            x1(i)=xmag(i,2)
-                call lin (x1,y1,nfit,a,b)
+        n = 1
+        do i=1,nfit
+          if (indx(i).eq.1) then
+            y1(n)=xmag(i,2)-ymag(i,2)+fext(2)*x(i,2)+sext(2)*
+     $            ymag(i,2)*x(i,2)
+            x1(n)=xmag(i,2)
+            n = n+1
+          endif
+        enddo
+        n = n-1
+        call lin (x1,y1,n,a,b)
 c
 c  plot results and overlay the fit
 c
@@ -627,28 +655,19 @@ c
 c now remove bad stars for next iteration
 c
       if (iiflag.ne.0) then
-        i = 1
-9000    continue
-          if (indx(i).eq.0) then
+        j = 0
+        k = 0
+        do i=1,nfit
+           if (indx(i).eq.1) then
+             j = j+1
+           else
             print *,'Deleting star: ',xstar(i)
-            if (i.ne.nfit) then
-              do j=i,nfit-1
-                indx(j) = indx(j+1)
-                do k=1,nc+1
-                  x(j,k) = x(j+1,k)
-                  ymag(j,k) = ymag(j+1,k)
-                  xmag(j,k) = xmag(j+1,k)
-                  xstar(j) = xstar(j+1)
-                enddo
-              enddo
-            endif
-            nfit = nfit - 1
-            i = i - 1
+            k = k+1
           endif
-          i = i + 1
-          if (i.le.nfit) goto 9000
+        enddo
+        print *,'Deleted ',k,' Stars out of ',nfit
         iiflag = 0
-        goto 7500
+        if (j.ge.3) goto 7500
       endif
 	else
 c
@@ -674,7 +693,9 @@ c **********************************************************************
          sumdev(k) = 0.0
          sumdev2(k) = 0.0
         enddo
+        ntot=0
 	do 7000 k=1,nfit
+          if (indx(k).eq.1) then
 		c(k,1)=coef(2)*(ymag(k,2)*(1.-sext(2)*x(k,2))-
      $               fext(2)*x(k,2))+zero(2)
 		fmag(k)=ymag(k,1)-fext(1)*x(k,1)-sext(1)*ymag(k,2)*
@@ -691,9 +712,11 @@ c
                 iflg(1) = '   '
                 if (abs(delmag).gt.0.05) iflg(1)='***'
                 do m=1,nc
-                iflg(m+1) = '   '
-                if (abs(delc(m)).gt.0.05) iflg(m+1)='***'
+                  iflg(m+1) = '   '
+                  if (abs(delc(m)).gt.0.05) iflg(m+1)='***'
                 enddo
+                ntot=ntot+1
+          endif
 		write(6,7007) delmag,iflg(1),(delc(m),iflg(m+1),m=1,nc)
 7007		format(1x,'errors = ',6x,6(f7.3,a3,8x))
 c 	line=line+1
@@ -707,7 +730,7 @@ c	endif
 c
 c now calculate standard deviations
 c
-        zstar = float(nfit)
+        zstar = float(ntot)
         DO m=1,nc+1
          sumdev(m) = dsqrt(abs(zstar*sumdev2(m) - sumdev(m)*sumdev(m))/
      $       (zstar*(zstar-1.)))
@@ -716,6 +739,14 @@ c
 7008    format (' St deviations: ',6(f7.3,11x))
                print *,'Press any key to continue:'
                read (5,'(a)') adummy
+      do i=1,nfit
+        if (indx(i).eq.1) then
+          delmag = abs(xmag(i,1) - fmag(i))
+          if (delmag.gt.2.0*sumdev(1)) indx(i) = 0
+          delc(1) = abs(xmag(k,2) - c(k,1))
+          if (delc(1).gt.2.0*sumdev(2)) indx(i) = 0
+        endif
+      enddo
 c  *********************************************************************
 c  Make plots of Calc Mag vs True Mag and Calc color vs True Color
 c  *********************************************************************
@@ -759,28 +790,19 @@ c
 c now remove bad stars for next iteration
 c
       if (iiflag.ne.0) then
-        i = 1
-90      continue
-          if (indx(i).eq.0) then
+        j = 0
+        k = 0
+        do i=1,nfit
+           if (indx(i).eq.1) then
+             j = j+1
+           else
             print *,'Deleting star: ',xstar(i)
-            if (i.ne.nfit) then
-              do j=i,nfit-1
-                indx(j) = indx(j+1)
-                do k=1,nc+1
-                  x(j,k) = x(j+1,k)
-                  ymag(j,k) = ymag(j+1,k)
-                  xmag(j,k) = xmag(j+1,k)
-                  xstar(j) = xstar(j+1)
-                enddo
-              enddo
-            endif
-            nfit = nfit - 1
-            i = i - 1
+            k = k+1
           endif
-          i = i + 1
-          if (i.le.nfit) goto 90
+        enddo
+        print *,'Deleted ',k,' Stars out of ',nfit
         iiflag = 0
-        goto 75
+        if (j.ge.3) goto 75
       endif
 5000  continue
 c
@@ -802,8 +824,8 @@ c
 2999	  format('TRANSFORMATION COEFFICIENTS'/
      $    'filename: ',a40/' fil1',' fil2',
      $    ' fil3','   fext1','    fext2','    sext1','    sext2',
-     $    '   coef1','   coef2','   zero1','   zero2','    xdif',
-     $    '   nfit', '   zp ','   std1 ','   std2 ')
+     $    '    coef1','    coef2','    zero1','    zero2','    xdif',
+     $    '   nfit', '   zp ','  std1 ','   std2 ')
           endif
       write (3,3000) nfilt1,nfilt2,nfilt3,fext,sext,coef,
      $    zero,xdif,nfit,zpt,sumdev
@@ -1022,7 +1044,7 @@ c  Input: star name (star), number of filters (nf), warning flag (warn)
 c  Output: mag and colors (dmag)
 c
       INTEGER MAXSTD,MAXFC,MAXFILT
-      PARAMETER (MAXSTD = 70000)
+      PARAMETER (MAXSTD = 100000)
       PARAMETER (MAXFC = 2)
       PARAMETER (MAXFILT = 14)
       real*8 sra(MAXSTD),sdec(MAXSTD),err,errmax
@@ -1133,7 +1155,7 @@ c NOTE: dimensions sext,fext,coef,zero to match other routines
 c then used index (1) for all uses of these parameters
 c
       integer MAXSTARS,MAXFC,MAXC,MAXFILT
-      PARAMETER (MAXSTARS = 70000)
+      PARAMETER (MAXSTARS = 100000)
       PARAMETER (MAXC=1)
       PARAMETER (MAXFILT=11)
       PARAMETER (MAXFC=2)
@@ -1281,11 +1303,13 @@ c
       return
       end
 
-       subroutine disply2 (indx,iiflag)
+      subroutine disply2 (dflag,iiflag)
 c
 c  Common block paramaters (a common is used to prevent the system stack
 c   from exceeding 64KB.)
 c
+c       dflag    array of delete flags (0=delete,1=keep)
+c       iiflag   enter with 0, leave with 1 if points deleted
 c       x        the x data array              
 c       y        the y data array              
 c       npts      number of data points         
@@ -1304,12 +1328,13 @@ c       mflag     logical variable indicating if this is a magnitude plot
 c
 c
       integer MAXSTARS
-      PARAMETER (MAXSTARS=70000)
+      PARAMETER (MAXSTARS=100000)
       real*4  x(MAXSTARS),y(MAXSTARS),rarray(7)
       real*8 dist,dmin,x1(2),y1(2)
       real*8 xmx,xmn,ymn,ymx,xz(MAXSTARS),yz(MAXSTARS)
-      real*8 xx,yy
-      integer indx(MAXSTARS),iiflag
+      real*8 x2(MAXSTARS),y2(MAXSTARS)
+      real*8 xx,yy,xk,yk
+      integer iiflag,dflag(MAXSTARS)
       integer*2 iarray(9)
       character*30 xlab,ylab
       character*10 str
@@ -1332,42 +1357,62 @@ c
       ymin = 5.e20
       xmax = -5.e20
       ymax = -5.e20
+      j = 1
+      k = 1
       DO i=1,npts
         xmin = min(xmin,x(i))
         xmax = max(xmax,x(i))
         ymin = min(ymin,y(i))
         ymax = max(ymax,y(i))
-        xz(i) = x(i)
-        yz(i) = y(i)
+        if (dflag(i).eq.1) then
+          xz(j) = x(i)
+          yz(j) = y(i)
+          j = j+1
+        else
+          x2(k) = x(i)
+          y2(k) = y(i)
+          k = k+1
+        endif
       ENDDO
+      j=j-1
+      k=k-1
       xmx = xmax
       xmn = xmin
       ymx = ymax
       ymn = ymin
       call sm_limits(xmn,xmx,ymn,ymx)
 c     call sm_limits(xmin,xmax,ymin,ymax)
-      call sm_ctype ('white')
+      call sm_ctype ('default')
       call sm_box (1,2,0,0)
       call sm_xlabel(xlab)
       call sm_ylabel(ylab)
       call sm_gflush
-      call sm_ctype ('green')
-      IF (connect) THEN
-        call sm_conn(xz,yz,npts)
-c       call sm_conn(x,y,npts)
-      ELSE
-        call sm_ptype(2.43d2,1)
-c       call sm_ptype(2.43e2,1)
-        call sm_expand(1.1d0)
-c       call sm_expand(1.1e0)
-        call sm_points(xz,yz,npts)
-c       call sm_points(x,y,npts)
-        call sm_ptype(1.1d1,1)
-c       call sm_ptype(1.1e1,1)
-        call sm_expand(1.0d0)
-c       call sm_expand(1.0e0)
-      ENDIF
-      call sm_gflush
+      if (j.ge.0) then
+        call sm_ctype ('green')
+        IF (connect) THEN
+          call sm_conn(xz,yz,j)
+        ELSE
+          call sm_ptype(2.43d2,1)
+          call sm_expand(1.1d0)
+          call sm_points(xz,yz,j)
+          call sm_ptype(1.1d1,1)
+          call sm_expand(1.0d0)
+        ENDIF
+        call sm_gflush
+      endif
+      if (k.ge.0) then
+        call sm_ctype ('blue')
+        IF (connect) THEN
+          call sm_conn(x2,y2,k)
+        ELSE
+          call sm_ptype(2.43d2,1)
+          call sm_expand(1.1d0)
+          call sm_points(x2,y2,k)
+          call sm_ptype(1.1d1,1)
+          call sm_expand(1.0d0)
+        ENDIF
+        call sm_gflush
+      endif
       x1(1) = xmin
       y1(1) = b + slope*x1(1)
       x1(2) = xmax
@@ -1378,14 +1423,6 @@ c     call sm_lweight(2.e0)
       call sm_conn(x1,y1,2)
 c     call sm_conn(x1,y1,2)
 c
-      call sm_gflush
-      x1(1) = xmin
-      y1(1) = b + slope*x1(1)
-      x1(2) = xmax
-      y1(2) = b + slope*x1(2)
-      call sm_ctype('red')
-      call sm_conn(x1,y1,2)
-c     call sm_conn(x1,y1,2)
       call sm_gflush
 c
 c loop to remove discrepant points
@@ -1405,7 +1442,7 @@ c
             indx2=i
           ENDIF
         ENDDO
-        indx(indx2) = 0
+        dflag(indx2) = 0
         print 9090,x(indx2),y(indx2)
 9090     format ('Closest point is: ',2f9.2)
       ELSEIF (key.eq.'u') THEN
@@ -1418,7 +1455,7 @@ c
             indx2=i
           ENDIF
         ENDDO
-        indx(indx2) = 1
+        dflag(indx2) = 1
         print 9090,x(indx2),y(indx2)
       ELSEIF (key.eq.'e') THEN
         RETURN
@@ -1457,7 +1494,7 @@ c	be invalid...so beware!
 c
 c
       INTEGER MAXSTARS,MAXFC
-      PARAMETER (MAXSTARS = 70000)
+      PARAMETER (MAXSTARS = 100000)
       PARAMETER (MAXFC = 2)
 	real*4 smag(maxstars,MAXFC),urmag(maxstars,MAXFC),
      $  x(maxstars,MAXFC),
