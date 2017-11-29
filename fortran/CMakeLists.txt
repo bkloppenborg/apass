@@ -29,13 +29,13 @@ target_link_libraries(filstat aah)
 find_package(X11 REQUIRED)
 
 # Output from SuperMongo compilation
-link_directories("/home/kloppenb/local/lib")
+link_directories("/home/bkloppenborg-gmail_com/local/lib")
 set(PLOTSUB_LIBRARIES "libplotsub_d.a" CACHE FILEPATH "libplotsub_d.a")
 set(DEVICES_LIBRARIES "libdevices_d.a" CACHE FILEPATH "libdevices_d.a")
 set(UTILS_LIBRARIES   "libutils_d.a"   CACHE FILEPATH "libutils_d.a")
 
 # Output from SLAlib (Positional Astronomy Library)
-link_directories("/home/kloppenb/workspace/slalib/build/src")
+link_directories("/home/bkloppenborg-gmail_com/workspace/slalib/build/src")
 set(SLA_LIBRARIES  "sla_f.a"   CACHE FILEPATH "libsla_f.a")
 
 add_executable(filtran filtran.f)
