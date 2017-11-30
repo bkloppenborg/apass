@@ -7,6 +7,10 @@ from multiprocessing import Pool
 
 # for plots
 import numpy as np
+
+# matplotlib
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 # local includes

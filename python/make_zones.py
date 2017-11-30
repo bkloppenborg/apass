@@ -1,8 +1,14 @@
 #!/bin/python
 import argparse
 import numpy as np
+
+# matplotlib
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
+# various mathematical functions
 from numpy import cos
 from math import pi
 

@@ -1,9 +1,13 @@
 #!/bin/python
 import argparse
 import numpy as np
+import os
+
+#matplotlib
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import os
 
 # multithreading
 from multiprocessing import Pool
@@ -16,7 +20,6 @@ from quadtree import *
 from quadtree_types import *
 from apass import *
 from apass_types import *
-
 
 def zone_to_rects(filename):
     """Processes and APASS zone file into overlapping rectangles"""
