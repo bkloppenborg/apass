@@ -35,10 +35,13 @@ def build_data_dict(filename):
     try:
         data = read_fred(filename)
     except ValueError:
-        print("ERROR: The file %s has an error and was not parsed" % (filename))
+        print("ERROR: File %s has a bad value and was not parsed" % (filename))
         return None
     except IndexError:
-        print("Error: The file %s has an error and was not parsed" % (filename))
+        print("ERROR: File %s is missing data and was not parsed" % (filename))
+        return None
+    except:
+        print("ERROR: File %s has an unknown error" % (filename))
         return None
 
     # process every file, inserting it into a .dat file. Keep track of any
