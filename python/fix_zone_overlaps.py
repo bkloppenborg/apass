@@ -281,12 +281,15 @@ def fix_zone_overlaps(zone_index):
             adj_containers = adj_node.get_overlapping_containers(container, remove=False)
 
             # move any adjacent containers into this container and mark the moved
+            dest_name = apass.name_container(container.zone_id,
+                                             container.node_id,
+                                             container.container_id)
             for adj_container in adj_containers:
                 # generate nice output
-                name = apass.name_container(adj_container.zone_id,
+                src_name = apass.name_container(adj_container.zone_id,
                                             adj_container.node_id,
                                             adj_container.container_id)
-                print(" merging %s " % (name))
+                print(" merging %s into %s" % (src_name, dest_name))
                 container.merge(adj_container, mark_moved=True)
                 if name in adj_border_infos.keys():
                     #print(" updating border rect file for zone %i" % (adj_zone_id))
