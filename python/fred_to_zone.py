@@ -37,6 +37,9 @@ def build_data_dict(filename):
     except ValueError:
         print("ERROR: The file %s has an error and was not parsed" % (filename))
         return None
+    except IndexError:
+        print("Error: The file %s has an error and was not parsed" % (filename))
+        return None
 
     # process every file, inserting it into a .dat file. Keep track of any
     # files that were opened in the open_files set
