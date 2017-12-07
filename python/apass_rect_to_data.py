@@ -121,7 +121,7 @@ def summarize_data(container):
     num_nights = len(set(data['night']))
 
     # construct the output string
-    prefix_fmt = "%010i %10.6f %6.3f %10.6f %6.3f %4i %4i"
+    prefix_fmt = "%010s %10.6f %6.3f %10.6f %6.3f %4i %4i"
     mag_fmt = "%6.3f"
     # Start with the following information
     #  # Field    RA(J2000)   raerr  DEC(J2000) decerr nobs  mobs
