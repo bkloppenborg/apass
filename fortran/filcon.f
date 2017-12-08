@@ -34,29 +34,44 @@ c
       INTEGER satflags(MAXFILT),flags(MAXFILT),fflag,tflag
       INTEGER i,j,k,igroup,isys,isystem(MAXFILT)
       INTEGER iparm(20,3),ngt,night(MAXFILT)
-      CHARACTER file3*50,file2*50,fileid*80
-      CHARACTER object*25,objectnew*25
+      CHARACTER file1*80,file2*80,file3*80,fileid*80
+      CHARACTER object*25,objectnew*25,cisys*5
       character*30 type
       CHARACTER*10 star,skip,akcess
 c
 c ***********************************************************************
-      print *,'                      Program FILCON version 3.2'
-      print *,'                         14-Jun-2017 '        
-      print *
+c     print *,'                      Program FILCON version 3.3'
+c     print *,'                         20-Sep-2017 '        
+c     print *
 c ************************************************************************
 c
-      print *,'This program converts an instrumental data file to ',
-     $          'the standard photometric'
-      print *,'system.  The input file comes from program AMATCH',
-     $          ' and the transformation '
-      print *,'coefficients come from the TRAN.DAT file.'
-      print *,'  This version for magnitudes only.'
-      print *
-      print *
+c     print *,'This program converts an instrumental data file to ',
+c    $          'the standard photometric'
+c     print *,'system.  The input file comes from program AMATCH',
+c    $          ' and the transformation '
+c     print *,'coefficients come from the TRAN.DAT file.'
+c     print *,'  This version for magnitudes only.'
+c     print *
+c     print *
+c
+c read command line arguments
+c filcon <isys> <tranfile> <infile> <outfile>
+c where isys is the residual correction ID
+c
+      narg = iargc()
+      call getarg(1,cisys)
+      call getarg(2,file1)
+      call getarg(3,file2)
+      call getarg(4,file3)
+      read (cisys,*) isys
+c     print *,'arg1: ',cisys,isys
+c     print *,'arg2: ',file1
+c     print *,'arg3: ',file2
+c     print *,'arg4: ',file3
 c
 c  open and read the TRAN file
 c
-      open(unit=1,file='tran.dat',status='old',err=10)
+      open(unit=1,file=file1,status='old',err=10)
       read (1,'(a)') fileid
       IF (fileid .ne. 'TRANSFORMATION COEFFICIENTS') THEN
         call bell
@@ -86,42 +101,34 @@ c
       close(1)
 c note: can only have maxtran-1 transformations; kludge
       ntran = i - 1
-      print *,'number of trans equations: ',ntran
+c     print *,'number of trans equations: ',ntran
 c
 c  open the input data file
 c
-30    print *,'  Enter the input data file name --- '
-      read (5,'(a)') file3
-      open(unit=3,file=file3,status='old',err=35)
+      open(unit=3,file=file2,status='old',err=35)
       read (3,'(a)') fileid
       IF (fileid(1:24) .ne. '#INSTRUMENTAL MAGNITUDES') THEN
         call bell
-        print *,'  This is the wrong file type, try again.'
-        close (3)
-        GOTO 30
+        print *,'  This is the wrong input file type.'
+        stop
       ENDIF
-      go to 40
+      goto 40
 35    continue
       call bell
-      print *,'  Unable to open this file, try again'
-      GOTO 30
+      print *,'  Unable to open this input file'
+      stop 
 c
 c  get output file name
 c
-40    print *,'  Enter the output file name --- '
-      read (5,'(a)') file2
-      IF(file2 .eq. file3) THEN
+40    IF(file2 .eq. file3) THEN
       	call bell
       	print *,'  Input and output files can not be the same.'
-      	close (3)
-      	GOTO 30
+        stop
       ENDIF
 c
-      print *,'Saturation limit (fp): '
-      read (5,*) satur
+      satur = 65000.
       type = 'STANDARD MAGNITUDES AND COLORS'
-c     call openit(2,file2,type,.true.,akcess,num,filter)
-      open(unit=2,file=file2,status='new')
+      open(unit=2,file=file3,status='new')
 c
 c
 c  write output header id
@@ -130,11 +137,11 @@ c
           write(2,9008)
 9008      format('# STANDARD MAGNITUDES ONLY')
           write(2,9018)
-9018      format('# FILCON ver 3.2'/
-     $   ,'# RA (J2000)',4x,'DEC',4x,'CCDX',6x,'CCDY'5x,
-     $   'Flags',6x,'HJD',3x,
-     $   'Airmass',2x,'Set',5x,'Group',4x,'Field',
-     $   6x,'Filt',3x,'Mag',5x,'Error',4x,'dmag',
+9018      format('# FILCON ver 3.3'/
+     $   ,'# RA (J2000)',4x,'DEC',8x,'CCDX',6x,'CCDY',2x,
+     $   'Flags',3x,'HJD',6x,
+     $   'Airmass',3x,'Set',6x,'Group',3x,'Object',19x,
+     $   'Filt',3x,'Mag',4x,'Error',4x,'dmag',
      $   4x,'sys',1x,'night')
       ENDIF
 c
@@ -169,7 +176,10 @@ c loop until reach end of this star's data
          read (3,9003,end=999) hjdx,rax,decx,j,amass,
      $   xccdx,xccdy,amax,apmag,aperr,photflag,
      $   objectnew,ngt,ksetnew,istarnew,dmagx
-         if (objectnew.eq.object.and.kset.eq.ksetnew) then
+         if (istarnew.eq.istar.and.kset.eq.ksetnew) then
+c kludge for ZS
+           if (j.eq.13) j=11
+c kludge for ZS
            umag(j) = apmag
            uerr(j) = aperr
            xx(j) = amass
@@ -187,6 +197,7 @@ c loop until reach end of this star's data
            goto 110
          else
            object = objectnew
+           istar = istarnew
            kset = ksetnew
            backspace(3)
          endif
@@ -234,3 +245,12 @@ c
       close (2)
       stop
       end
+
+	Subroutine bell
+c
+c  make user aware of an input error
+c
+	ibell=7
+	print *,char(ibell)
+	return
+	end

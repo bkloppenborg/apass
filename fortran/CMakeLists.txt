@@ -19,11 +19,19 @@ add_executable(hphot hphot.f)
 add_executable(filepp filepp.f)
 target_link_libraries(filstat aah)
 
+add_executable(compare_apass compare_apass.f)
+
+add_executable(filextr filextr.f)
+
+add_executable(filcon filcon.f)
+target_link_libraries(filcon aah)
+
+
 #
-# FILTRAN
+# FILTRAN/FILPLOT
 #
-# Filtran requires several additional libraries for which there are not
-# CMake find scripts. Rather than write find scripts, we'll just link
+# Filtran and filplot require several additional libraries for which there
+# are not CMake find scripts. Rather than write find scripts, we'll just link
 # to them directly from here
 
 find_package(X11 REQUIRED)
@@ -40,6 +48,10 @@ set(SLA_LIBRARIES  "sla_f.a"   CACHE FILEPATH "libsla_f.a")
 
 add_executable(filtran filtran.f)
 target_link_libraries(filtran aah ${PLOTSUB_LIBRARIES} ${DEVICES_LIBRARIES}
+  ${UTILS_LIBRARIES} ${SLA_LIBRARIES} ${X11_LIBRARIES})
+
+add_executable(filplot filplot.f)
+target_link_libraries(filplot aah ${PLOTSUB_LIBRARIES} ${DEVICES_LIBRARIES}
   ${UTILS_LIBRARIES} ${SLA_LIBRARIES} ${X11_LIBRARIES})
 
 add_subdirectory("aahlib")

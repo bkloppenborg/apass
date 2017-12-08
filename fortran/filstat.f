@@ -36,14 +36,14 @@ c note: 5,000,000 stars permitted for now
 c     INTEGER*2 xnm(MAXFILT,MAXSTAR),xnr(MAXSTAR),ferr(MAXSTAR)
       INTEGER xnm(MAXFILT,MAXSTAR),xnr(MAXSTAR),ferr(MAXSTAR)
       INTEGER xmr(MAXSTAR), optype, csv, jcsdss, flag1, flag2
-      CHARACTER file1*60,file2*60,file3*60,file4*60,star*10
-      CHARACTER*10 sname(MAXSTAR),names(100),oldname
+      CHARACTER file1*60,file2*60,file3*60,file4*60,star*25
+      CHARACTER*25 sname(MAXSTAR),names(100),oldname
       character*80 ch
       LOGICAL fflag, nflag(MAXSTAR)
 c
 c ***********************************************************************
 c
-      print *,'    Program FILSTAT version 3.2   05-Jun-2012'
+      print *,'    Program FILSTAT version 3.3   04-Dec-2017'
       print *
       print *
 c
@@ -157,7 +157,7 @@ c loop over stars
      $   hjd,avexx,kset,igroup,
      $  star,ifil,xmag1,xerr1
 901   format(2f12.7,2f10.3,1x,i1.1,1x,i1.1,1x,f12.6,
-     $  1x,f5.3,i5,1x,i10,1x,a10,1x,i5,1x,2f8.4)
+     $  1x,f5.3,i5,1x,i10,1x,a25,1x,i5,1x,2f8.4)
       if (decx.lt.declo.or.decx.gt.dechi) goto 200
       if (flag1.ne.0) goto 200
 c kludge - if outside corrected image circle, ignore

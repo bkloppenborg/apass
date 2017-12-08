@@ -36,7 +36,7 @@ c
       PARAMETER (MAXPRO = 65000)
       REAL*4 latitude,longitude,errrad,apsize(MAXAP),wscale
       INTEGER i,j,firstfile,lastfile,iap,ierr,kindx,kset,
-     $   iapcor,ilatlon,iapset(7),propid(MAXPRO),prid
+     $   iapcor,ilatlon,iapset(MAXAP),propid(MAXPRO),prid
       INTEGER photflag,prfield(MAXPRO),prfd,jj,apflag
       INTEGER istack(MAXPRO)
       CHARACTER
@@ -48,7 +48,7 @@ c
       common /blky/ npr,istack,prnam,prfield
       DATA kset /1/
 c
-c     print *,' HEPP version 3.0 10-Aug-2016'
+c     print *,' HEPP version 4.0 06-Mar-2017'
 c
 c get hemisphere and directory from command line and do checks
 c hemisphere is single character, either n or s
@@ -77,7 +77,7 @@ c
       iapset(7) = 11
       iapset(8) = 11
       wscale = 2.566
-      do i=1,8
+      do i=1,MAXAP
         apsize(i) = wscale*float(iapset(i))
       enddo
 c
@@ -102,10 +102,10 @@ c assume 16arcsec aperture
       open (unit=3,file=fname,status='new')
 c write header
       write (3,9001)
-9001  format ('#INSTRUMENTAL MAGNITUDES, EPOCHPHOT 3.0'/
+9001  format ('#INSTRUMENTAL MAGNITUDES, EPOCHPHOT 4.0'/
      $  '#',4x,'HJD',7x,'RA',9x,'DEC',9x,'FILT',1x,'AMASS',
      $   2x,'CCDX',5x,'CCDY',5x,'fwmx',3x,'fwmy',4x,'Peak',
-     $   3x,'Sky',3x,'apr',2x,'apmag',3x,'aperr',
+     $   3x,'Sky',3x,'apmag',3x,'aperr',2x,'repeat n times',
      $   1x,'pflg',
      $   2x,'proid',1x,'profd',2x,'syst',1x,'night',1x,'file',
      $   1x,'kset',1x,'kser',3x,'star')
@@ -114,6 +114,7 @@ c main loop over number of frames
 c
 c ierr = 0 and object = blank so first file will be processed correctly
 c
+90    continue
       ierr = 0
       object = ' '
       fil = ' '
@@ -144,6 +145,7 @@ c
           write (fnum,9012) j
 9012      format (i4.4)
           fname = base(1:nbase)//'a.'//fnum
+c         print *,' processing file ',fname
           inquire (file=fname,exist=ok)
           IF (ok) THEN
             open (unit=1,file=fname,status='old')
@@ -240,7 +242,7 @@ c
       DATA nstar /MAXFILT*0/
 c
       picon = datan(1.D0)/45.0
-      errmax = (errrad/3600.)**2  ! user input radius
+      errmax = (errrad/3600.)**2  ! user input radius (3arcsec)
       iplate = 0
 c for first entry, initialize arrays
       if (ierr.eq.0) then
@@ -373,33 +375,21 @@ c
       i = 0
 100   continue
         i = min((i+1),MAXSTAR)
+110     continue
         if (iplate.eq.0) then
-c       read (1,9024,end=200) r(i,jfilt),d(i,jfilt),
-c    $    x1(i),y1(i),
-c    $    fx(i,jfilt),fy(i,jfilt),sh(i,jfilt),apm(i,jfilt),
-c    $    skydn(i,jfilt)
-        read (1,9024,end=200) rx,dx,xx1,xy1,xfx,xfy,shx,
+        read (1,9024,end=200,err=120) rx,dx,xx1,xy1,xfx,xfy,shx,
      $    apmx,skydnx,(xmag(j),j=1,8),(xerr(j),j=1,8)
-c     $    apmx,skydnx,(xmag(j),j=1,7),(xerr(j),j=1,7)
-c9024    format (2f12.8,2f8.2,3f6.2,f9.2,f9.2/7f7.3/7f7.3)
 9024    format (2f12.8,2f8.2,3f6.2,f9.2,f9.2,20f7.3)
-c       read (1,9025) (ymag(i,j),j=1,7)
-9025    format (9f7.3)
-c       read (1,9025) (yerr(i,j),j=1,7)
         else
-c         read (1,9026,end=200) r(i,jfilt),d(i,jfilt),
-c    $    x1(i),y1(i),
-c    $    fx(i,jfilt),fy(i,jfilt),sh(i,jfilt),apm(i,jfilt),
-c    $    skydn(i,jfilt),
-c    $    (ymag(i,j),j=1,7),(yerr(i,j),j=1,7)
-        read (1,9026,end=200) rx,dx,xx1,xy1,xfx,xfy,shx,
+        read (1,9026,end=200,err=120) rx,dx,xx1,xy1,xfx,xfy,shx,
      $    apmx,skydnx,(xmag(j),j=1,8),(xerr(j),j=1,8)
-c     $    apmx,skydnx,(xmag(j),j=1,7),(xerr(j),j=1,7)
-c9026    format (2f12.8,2f8.2,3f6.2,f9.2,f9.2,
-c     $    46x,18f7.3)
 9026    format (2f12.8,2f8.2,3f6.2,f9.2,f9.2,
      $    46x,20f7.3)
         endif
+        goto 130
+120     print *,'file error, star ',obj,filter,i
+        goto 110
+130     continue
 c
 c crude matching to older objects; needs sorting
 c if xmag = 99, then data bad and skip object
@@ -428,7 +418,6 @@ c
             ii = kk
           endif
         endif
-        xmag(iap) = xmag(iap) + exptime
         if (ii.eq.0) then
           nstar(jfilt) = nstar(jfilt) + 1
           ii = nstar(jfilt)
@@ -443,7 +432,7 @@ c
           sh(ii,jfilt) = shx
           apm(ii,jfilt) = apmx
           do k=1,MAXAP
-            apmag(ii,jfilt,k) = xmag(k)
+            apmag(ii,jfilt,k) = xmag(k) + exptime
             aperr(ii,jfilt,k) = xerr(k)
           enddo
           skydn(ii,jfilt) = skydnx
@@ -476,6 +465,10 @@ c
         endif
         goto 100
 200   continue
+c     print *,'nstar= ',i
+      fil = filter
+      ierr = 2
+      return
 c
 c now calculate median aperture differences
 c
@@ -553,8 +546,16 @@ c check for neighbors
              xerr(iap) = yerr(i,iapcor)
           endif
         endif
+      enddo
+c
+c finish by correcting photometry for exposure time
+c
+300   continue
+      fil = filter
+      ierr = 2
+      do i=1,nstar(jfilt)
         do k=1,MAXAP
-          apmag(i,jfil,kt) = xmag(k) + exptime
+          apmag(i,jfilt,k) = xmag(k) + exptime
           aperr(i,jfilt,k) = xerr(k)
           if (xmag(k).gt.90.0) apmag(i,jfilt,k) = 99.999
         enddo
@@ -576,19 +577,20 @@ c
       PARAMETER (MAXFILT = 15)
       PARAMETER (MAXAP = 8)
       REAL*8 r(MAXSTAR,MAXFILT),d(MAXSTAR,MAXFILT),
-     $  jd(MAXSTAR,MAXFILT),picon,cosdjk
+     $  jd(MAXSTAR,MAXFILT),picon,darray(MAXSTAR)
+      REAL*8 rk,rj,dk,dj,decx
       REAL*4 fx(MAXSTAR,MAXFILT),fy(MAXSTAR,MAXFILT),
      $  sh(MAXSTAR,MAXFILT),apm(MAXSTAR,MAXFILT),
-     $  apmag(MAXSTAR,MAXFILT,MAXAP),
-     $  aperr(MAXSTAR,MAXFILT,MAXAP),
-     $  rerr(MAXFILT),ut(MAXFILT),errmax,skydn(MAXSTAR,MAXFILT),
+     $  apmag(MAXSTAR,MAXFILT,MAXAP),dsub,
+     $  aperr(MAXSTAR,MAXFILT,MAXAP),errmax,errmax2,
+     $  rerr(MAXFILT),ut(MAXFILT),skydn(MAXSTAR,MAXFILT),
      $  yerr,err,x1(MAXSTAR,MAXFILT),y1(MAXSTAR,MAXFILT),
      $  apsize(MAXAP)
       REAL*4 latitude,longitude,errrad,xnpts,ynpts
       real*8 xx1,xx2,xx3
-      INTEGER indx(MAXSTAR,MAXFILT),jd0,
+      INTEGER indx(MAXSTAR,MAXFILT),jd0,idec
      $  i,j,k,ierr,ifilts(8),jfilt,npts(MAXSTAR,MAXFILT),
-     $  nstar(MAXFILT),indxv
+     $  nstar(MAXFILT),indxv,indxd(MAXSTAR),jj
       INTEGER iap,iapcor
       CHARACTER*4 filen(MAXSTAR,MAXFILT),fnum
       COMMON /blka/ r,d,fx,fy,sh,apm,apmag,aperr,skydn,
@@ -597,10 +599,12 @@ c
       common /blkx/ latitude,longitude,errrad,fnum,iap,iapcor,apsize
 c
       indxv = 3
-      errmax = (errrad/3600.)**2  ! user input radius
+      errmax = (errrad/3600.)  ! user input radius (3arcsec) in degrees
+      errmax2 = (errrad/3600.)**2  ! user input radius
       picon = datan(1.D0)/45.0
 c match with respect to V frame, or reddest frame if
 c V not present
+      kindx = 0
       if (nstar(indxv).ne.0) then
         kindx = indxv
       else
@@ -612,42 +616,60 @@ c V not present
         enddo
 10      continue
       endif
+      if (kindx.eq.0) return
       do i=1,nstar(kindx)
         indx(i,kindx) = i
       enddo
 c
-c main loop
-c slow, kludge, must check every kindx star for new nearest
+c sort kindx stars by declination for comparison
 c
-c loop over number of filters
+      do k=1,nstar(kindx)
+        darray(k) = d(k,kindx)/dble(npts(k,kindx))
+        indxd(k) = k
+      enddo
+      call sort8(nstar(kindx),darray,indxd)
 c
+c main loop over number of filters
+c
+c     print *,'kindx,nstar ',kindx,nstar
       DO i=1,MAXFILT
         if (nstar(i).ne.0.and.i.ne.kindx) then
           do j=1,nstar(kindx)
             indx(j,i) = 0
+          enddo
+c for every star in filter other than kindx, see if matches a kindx
+c loop over number of stars in this filter
+c note: xnpts for current filter; ynpts for kindx filter
+c dk for current filter; dj for kindex filter
+          do k=1,nstar(i)
+            xnpts = dble(npts(k,i))
+            dk = d(k,i)/xnpts
             xerr = 1.E30
-c loop over stars within each filter to find match w/V star
-c note: assumption is small frame, so that can just subtract
-c RA's without doing true spherical trig
-c note: for stacking, ynpts and xnpts refer to number of stacked points
-c for nonstacking, they are =1
-            ynpts = dble(npts(j,kindx))
-            cosdjk = cos(d(j,kindx)*picon/ynpts)**2
-c
-c find closest star for other filter to the current V star
-c
-            do k=1,nstar(i)
-              xnpts = dble(npts(k,i))
-              yerr = ((r(j,kindx)/ynpts-r(k,i)/xnpts)**2)*cosdjk +
-     $               (d(j,kindx)/ynpts-d(k,i)/xnpts)**2
-              if (yerr.lt.xerr) then
-                xerr = yerr
-                kk = k
+            kk = 0
+c loop over kindx stars, which are sorted in dec
+            decx = dk - errmax
+            call locate (decx,darray,nstar(kindx),idec)
+            if (idec.eq.0) idec = 1
+            do j=idec,nstar(kindx)
+              jj = indxd(j)
+              dj = darray(j)
+              dsub = dj - dk
+             if (dsub.gt.errmax) goto 120
+              if (abs(dsub).le.errmax) then
+                ynpts = dble(npts(jj,kindx))
+                rj = r(jj,kindx)*cos(dj*picon)/ynpts
+                yerr = (r(k,i)*cos(dk*picon)/xnpts - rj)**2
+     $            + dsub**2
+                if (yerr.le.errmax2.and.yerr.lt.xerr) then
+                  xerr = yerr
+                  kk = jj
+                endif
               endif
             enddo
+120         continue
 c if this is within errmax of the V star, assume it is same and update
-            if (xerr.lt.errmax) then
-              indx(j,i) = kk
+            if (kk.gt.0) then
+              indx(kk,i) = k
             endif
           enddo
         endif
@@ -754,14 +776,14 @@ c        if (npts(i,j).ge.nmin(j)) then
             write(3,9005) hjd,r(k,j),d(k,j),
      $       j,amass,
      $       x1(k,j),y1(k,j),fx(k,j),fy(k,j),
-     $       apm(k,j),skydn(k,j),iapv,
+     $       apm(k,j),skydn(k,j),
      $       (apmag(k,j,kk),aperr(k,j,kk),kk=1,MAXAP),
      $       photflag,object,
      $       jd0,filen(k,j),kset,kser,i
 9005         format (f12.5,f12.7,f12.7,
      $         i5,f7.3,
      $         f9.3,f9.3,f7.3,f7.3,
-     $         f8.1,f7.1,i5,
+     $         f8.1,f7.1,
      $         16f8.4,
      $         i5,a25,
      $         i6,1x,a4,i5,i5,i7)
@@ -929,13 +951,61 @@ c
       GOTO 10
       END
 
+      SUBROUTINE SORT8 (n,x,indx)
+c
+c heapsort of array x with corresponding index array index
+c double-precision floating point
+c from numerical recipies
+c
+      REAL*8 x(n),xx
+      INTEGER indx(n),n,k,ir
+      k = n/2+1
+      ir = n
+10    continue
+      IF (k.gt.1) THEN
+        k = k-1
+        xx = x(k)
+        ii = indx(k)
+      ELSE
+        xx = x(ir)
+        ii = indx(ir)
+        x(ir) = x(1)
+        indx(ir) = indx(1)
+        ir = ir-1
+        IF (ir.eq.1) THEN
+          x(1) = xx
+          indx(1) = ii
+          RETURN
+        ENDIF
+      ENDIF
+      i = k
+      j = k+k
+20    IF (j.le.ir) THEN
+        IF (j.lt.ir) THEN
+          IF (x(j).lt.x(j+1)) j = j+1
+        ENDIF
+        IF (xx.lt.x(j)) THEN
+          x(i) = x(j)
+          indx(i) = indx(j)
+          i = j
+          j = j+j
+        ELSE
+          j = ir+1
+        ENDIF
+      GOTO 20
+      ENDIF
+      x(i) = xx
+      indx(i) = ii
+      GOTO 10
+      END
+
         subroutine jday(id,im,iyr,uthr,date)
 c this sub calculates julian date from ut date
 c inputs are id,im,iy, uthr--day,month,year,and ut hour
 c output is date, julian date-2,400,000
 c Henden, 1977
 c
-	double precision date,jdo,iiy
+        double precision date,jdo,iiy
         dimension mo(12)
         integer id,im,iyr,iy
         data mo /0,31,59,90,120,151,181,212,243,273,304,334/
@@ -950,7 +1020,7 @@ c
         date=jdo+uthr/24.0-0.5
         return
         end
-	SUBROUTINE HELCOR (JD,ALPHA,DELTA,DT)
+        SUBROUTINE HELCOR (JD,ALPHA,DELTA,DT)
 C
 C  THIS SUBROUTINE CALCULATES THE HELIOCENTRIC CORRECTION
 C   JD IS THE JULIAN DATE (MINUS 2400000) AT THE UT OF THE OBSERVATION
@@ -962,31 +1032,56 @@ C   FORTRAN 77 COMPATIBLE
 C
 C   LAST REVISED 21-APR-89
 C   
-	REAL*8 JD,ALPHA,DELTA,DT
-	PICON=6.28318531/360.0
-	TT=(JD-15020.)/36525.
-	P=(1.396041+0.000308*(TT+0.5))*(TT-0.499998)
-	RL=279.696678+36000.76892*TT+0.000303*(TT**2)-P
-	G=358.475833+35999.04975*TT-0.00015*(TT**2)
-8	IF(G .LT. 360.) GO TO 11
-	G=G-360.
-	GO TO 8
-11	IF(RL .LT. 360.) GO TO 10
-	RL=RL-360.
-	GO TO 11
-10	RL=RL*PICON
-	G=G*PICON
-	GLM=G-RL
-	GLP=G+RL
-	TGLP=2.0*G+RL
-	TGLM=2.0*G-RL
-	X=.99986*COS(RL)-0.025127*COS(GLM)+0.008374*COS(GLP)+.000105*
+        REAL*8 JD,ALPHA,DELTA,DT
+        PICON=6.28318531/360.0
+        TT=(JD-15020.)/36525.
+        P=(1.396041+0.000308*(TT+0.5))*(TT-0.499998)
+        RL=279.696678+36000.76892*TT+0.000303*(TT**2)-P
+        G=358.475833+35999.04975*TT-0.00015*(TT**2)
+8        IF(G .LT. 360.) GO TO 11
+        G=G-360.
+        GO TO 8
+11        IF(RL .LT. 360.) GO TO 10
+        RL=RL-360.
+        GO TO 11
+10        RL=RL*PICON
+        G=G*PICON
+        GLM=G-RL
+        GLP=G+RL
+        TGLP=2.0*G+RL
+        TGLM=2.0*G-RL
+        X=.99986*COS(RL)-0.025127*COS(GLM)+0.008374*COS(GLP)+.000105*
      1  COS(TGLP)+.000063*TT*COS(GLM)+.000035*COS(TGLM)
-	Y=.917308*SIN(RL)+.023053*SIN(GLM)+.007683*SIN(GLP)+.000097*
+        Y=.917308*SIN(RL)+.023053*SIN(GLM)+.007683*SIN(GLP)+.000097*
      1  SIN(TGLP)-.000057*TT*SIN(GLM)-.000032*SIN(TGLM)
-	A=ALPHA*15.0*PICON
-	DEL=DELTA*PICON
-	DT=-0.0057755*((COS(DEL)*COS(A))*X+(.4337751*SIN(DEL)+
+        A=ALPHA*15.0*PICON
+        DEL=DELTA*PICON
+        DT=-0.0057755*((COS(DEL)*COS(A))*X+(.4337751*SIN(DEL)+
      1  COS(DEL)*SIN(A))*Y)
-	RETURN
-	END
+        RETURN
+        END
+
+      subroutine locate(decx,dec,n,idec)
+c locate decx inside of dec using bisection method
+c idec is such that dec(idec) <= decx <= dec(idec+1)
+c idec=0 or idec=n indicates out of range
+      real*8 decx,dec(n),rn,r1
+      integer n,idec,jl,ju,jm
+c
+      jl = 0
+      ju = n+1
+      rn = dec(n)
+      r1 = dec(1)
+100   if ((ju-jl).gt.1) then
+        jm = (ju+jl)/2
+        if ((rn.gt.r1).eqv.
+     $    (decx.gt.dec(jm))) then
+           jl = jm
+        else
+          ju = jm
+        endif
+        goto 100
+      endif
+      idec = jl
+      return
+      end

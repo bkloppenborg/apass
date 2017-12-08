@@ -14,8 +14,8 @@ c
       INTEGER MP,MAXFILT
       PARAMETER (MP=80000)
       PARAMETER (MAXFILT=6)
-c     REAL*8 ymn,ymx,xmn,xmx,xx,yy
-      REAL*4 ymn,ymx,xmn,xmx,xx,yy
+      REAL*8 ymn,ymx,xmn,xmx,xx,yy
+c     REAL*4 ymn,ymx,xmn,xmx,xx,yy
       REAL*4 ymin,ymax,xmin,xmax,aspect,zscale1
       REAL*4 zscale2,err,dist,xscale,yscale,verno
       REAL*4 x(MP),y(MP),z(mp),dif,difi
@@ -80,6 +80,7 @@ c
       read (5,*) errlim
 c cols are V, B-V, B, g', r', i'
       print *,' Enter star name, xxx=all: '
+      sname = '          '
       read (5,'(a)') sname
 c read header plus first record to get starting name
       read (1,*)
@@ -149,11 +150,13 @@ c
 210   continue
       print *,'field: ',xname,npts,xmin,xmax,ymin,ymax,iflag
 c trap to prevent plotting for basically blank fields
+c *** this jumps into an IF statement; need to redo ***
       if (npts.le.3) goto 320
       nerr = 0
       hierr = 0.0
       do i=1,npts
-        if (x(i).gt.11.0.and.x(i).lt.14.0) then
+        if (x(i).gt.11.0.and.x(i).lt.14.0.and.
+     $    y(i).lt.9.0) then
           hierr = hierr + y(i)
           nerr = nerr + 1
         endif
@@ -181,18 +184,18 @@ c trap to prevent plotting for basically blank fields
       ymn = ymin
       ymx = ymax
 c     print *,xmin,xmax,ymin,ymax
-c     call sm_limits (xmn,xmx,ymn,ymx)
-      call sm_limits (xmin,xmax,ymin,ymax)
+      call sm_limits (xmn,xmx,ymn,ymx)
+c     call sm_limits (xmin,xmax,ymin,ymax)
       call sm_ctype ('default')
       call sm_grelocate (11000,32000)
       call sm_label (xname)
       call sm_box (1,2,0,0)
       call sm_xlabel('magnitude')
       call sm_ylabel('err')
-c     call sm_ptype (2.43d2,1)
-      call sm_ptype (2.43e2,1)
-c     call sm_expand(1.0d0)
-      call sm_expand(1.0e0)
+      call sm_ptype (2.43d2,1)
+c     call sm_ptype (2.43e2,1)
+      call sm_expand(1.0d0)
+c     call sm_expand(1.0e0)
 c
 c kludge to limit number of plotted points
 c
@@ -242,8 +245,8 @@ c create three writes to speed up x11
         enddo
       endif
       call sm_ctype ('default')
-c     call sm_expand(1.0d0)
-      call sm_expand(1.0e0)
+      call sm_expand(1.0d0)
+c     call sm_expand(1.0e0)
       call sm_gflush
 250   continue
       n = 0
