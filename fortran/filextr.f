@@ -87,7 +87,7 @@ c loop over stars
           dist = ((ra(j)-rax)*cosd)**2 + (dec(j)-decx)**2
           if (dist.lt.err) then
             write (3,901) rax,decx,ccdx,ccdy,pflag,sflag,
-     $       hjd,avexx,kset,kgroup,field1,field2,filt,xmag,xerr,dmag,
+     $       hjd,avexx,kset,kgroup,star,filt,xmag,xerr,dmag,
      $       isys,night
           endif
         enddo

@@ -2,6 +2,7 @@
 c
 c tag observations as photometric or nonphotometric
 c written 11-Aug-2010 aah
+c mod 09-Dec-2017 aah new file format
 c
       INTEGER MAXST,MAXJD
       PARAMETER (MAXST = 100)
@@ -14,6 +15,7 @@ c
       integer istar(MAXST,MAXJD),kset(MAXST,MAXJD)
       character file1*80,file2*80,file3*80
       character ch1*139,ch2*139,ch3*139
+      character*25 name(MAXST,MAXJD),namex
 c
       print *,'Input list of fred files: '
       read (5,'(a)') file1
@@ -24,16 +26,16 @@ c
 c
       open (unit=1,file=file2,status='old')
       read (1,900) cra(1,1),cdec(1,1),ccdx,ccdy,flag1,flag2,
-     $    hjd,avexx,kset(1,1),igroup,iprop(1,1),istar(1,1),ifil,
+     $    hjd,avexx,kset(1,1),igroup,name(1,1),ifil,
      $    xmag1,xerr1,dmag,isys,jd(1)
       njd = 1
       nst(1) = 1
 100   continue
         read (1,900,end=200) crax,cdecx,ccdx,ccdy,flag1,flag2,
-     $    hjd,avexx,ksetx,igroup,ipropx,istarx,ifil,
+     $    hjd,avexx,ksetx,igroup,namex,ifil,
      $    xmag1,xerr1,dmag,isys,jdx
 900     format(2f12.7,2f10.3,1x,i1.1,1x,i1.1,1x,f12.6,
-     $  1x,f5.3,i5,1x,i10,1x,i5.5,i5.5,1x,i5,1x,3f8.4,2i6)
+     $  1x,f5.3,i5,1x,i10,1x,a25,1x,i5,1x,3f8.4,2i6)
         iflag = 0
         do i=1,njd
           if (jd(i).eq.jdx) then
@@ -51,8 +53,7 @@ c new star
           j = nst(iflag)
           cra(j,iflag) = crax
           cdec(j,iflag) = cdecx
-          iprop(j,iflag) = ipropx
-          istar(j,iflag) = istarx
+          name(j,iflag) = namex
           kset(j,iflag) = ksetx
         goto 100
 200   continue
@@ -75,7 +76,7 @@ c
         read (3,'(a)') ch2
         read (3,'(a)') ch3
         read (3,900) crax,cdecx,ccdx,ccdy,flag1,flag2,
-     $    hjd,avexx,ksetx,igroup,ipropx,istarx,ifil,
+     $    hjd,avexx,ksetx,igroup,namex,ifil,
      $    xmag1,xerr1,dmag,isys,jdx
         iflag=0
         do j=1,njd
@@ -94,13 +95,13 @@ c need to correct this file
         write (2,'(a)') ch3
 400     continue
         read (3,900,end=500) crax,cdecx,ccdx,ccdy,flag1,flag2,
-     $    hjd,avexx,ksetx,igroup,ipropx,istarx,ifil,
+     $    hjd,avexx,ksetx,igroup,namex,ifil,
      $    xmag1,xerr1,dmag,isys,jdx
         do j=1,njd
           if (jd(j).eq.jdx) then
              do i=1,nst(j)
-c               if(kset(i,j).eq.ksetx.and.iprop(i,j).eq.
-c     $           ipropx.and.istar(i,j).eq.istarx) then
+c               if(kset(i,j).eq.ksetx.and.name(i,j).eq.
+c     $           namex) then
                 if (kset(i,j).eq.ksetx) then
                  flag1 = itag
                 endif
@@ -108,7 +109,7 @@ c     $           ipropx.and.istar(i,j).eq.istarx) then
            endif
         enddo
         write (2,900) crax,cdecx,ccdx,ccdy,flag1,flag2,
-     $    hjd,avexx,ksetx,igroup,ipropx,istarx,ifil,
+     $    hjd,avexx,ksetx,igroup,namex,ifil,
      $    xmag1,xerr1,dmag,isys,jdx
         goto 400
 500    continue

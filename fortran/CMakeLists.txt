@@ -22,6 +22,8 @@ target_link_libraries(filstat aah)
 add_executable(compare_apass compare_apass.f)
 
 add_executable(filextr filextr.f)
+add_executable(filtag filtag.f)
+add_executable(extract_region extract_region.f)
 
 add_executable(filcon filcon.f)
 target_link_libraries(filcon aah)
