@@ -16,6 +16,7 @@ from scipy.stats import norm
 
 # code cleaning could remove/change this dependency
 from apass import apass_save_dir
+import dat
 
 # the following are useful includes, but are not mission critical:
 import time
@@ -33,33 +34,6 @@ MAX_MERGE_MAG = 16 # anything fainter than this value will not be used to determ
 # mags = []
 # mags_sig = []
 # where [] are repeated for each of the filters.
-
-# the SRO data format is as follows:
-# field_id, ra, ra_sig, dec, dec_sig, num_nights, num_observations, V, (B-V), B, sg, sr, si
-sro_filter_names =  ['V', 'B_V', 'B', 'sg', 'sr', 'si']
-sro_num_filters = len(sro_filter_names)
-
-sro_col_names = ['field_id', 'ra', 'ra_sig', 'dec', 'dec_sig', 'num_nights', 'num_observations']
-sro_col_names.extend(['large_mag_diff', 'num_obs_diff',
-                      'large_position_errors', 'large_bounding_boxes'])
-sro_col_names.extend(['num_nights_' + s for s in sro_filter_names])
-sro_col_names.extend(['num_obs_' + s for s in sro_filter_names])
-sro_col_names.extend(sro_filter_names)
-sro_col_names.extend([s + "_sig" for s in sro_filter_names])
-
-sro_col_formats = ['%10s', '%10.6f', '%6.3f', '%10.6f', '%6.3f', '%4i', '%4i']
-sro_col_formats.extend(['%1i'] * 4)                 # flags
-sro_col_formats.extend(['%3i'] * sro_num_filters)   # num_nights
-sro_col_formats.extend(['%3i'] * sro_num_filters)   # num_obs
-sro_col_formats.extend(['%6.3f'] * sro_num_filters) # mags
-sro_col_formats.extend(['%6.3f'] * sro_num_filters) # mags_sig
-
-sro_col_types = ['S10', 'float64', 'float64', 'float64', 'float64', 'int', 'int']
-sro_col_types.extend(['int'] * 4)                   # flags
-sro_col_types.extend(['int'] * sro_num_filters)     # num_nights
-sro_col_types.extend(['int'] * sro_num_filters)     # num_obs
-sro_col_types.extend(['float32'] * sro_num_filters) # num_obs
-sro_col_types.extend(['float32'] * sro_num_filters) # num_obs
 
 def make_pointings(field_base_id, pointings):
 
@@ -299,10 +273,11 @@ def main():
         indexes = np.in1d(data['field_id'], sub_G.nodes())
         t_data = data[indexes]
         filename = apass_save_dir + '/p%i.dat' % (field_base_id)
-        write_sro_dat(filename, t_data)
+        dat.write_dat(filename, t_data, dat_type="sro")
 
     # save data to all fields
-    write_sro_dat(apass_save_dir + '/pALL.dat', data)
+    filename = apass_save_dir + '/pAll.dat' % (field_base_id)
+    dat.write_dat(filename, t_data, dat_type="sro")
 
 
 def merge_by_greatest_weight(node_id_i, data, G):
@@ -437,7 +412,7 @@ def merge_pointings(data, field_i, neighbors, G):
 
     # Extract the indices for overlapping
     i,j = map(list, zip(*data_row_pairs))
-    for filter_id in sro_filter_names:
+    for filter_id in dat.sro_phot_names:
 
         # Extract all valid data
         x, y, x_sig, y_sig = get_good_data(data, i, j, filter_id)
@@ -508,12 +483,12 @@ def read_data(filenames):
     G = nx.Graph()
     num_rows = 0
     for filename in filenames:
-        print "Reading %s" % (filename)
-
         base_filename = os.path.splitext(filename)[0]
+        print "Reading %s" % (base_filename)
+
 
         # read in the data and append it to the data list.
-        t_data = read_sro_dat_file(filename)
+        t_data = dat.read_dat(filename, dat_type="sro")
         data.extend(t_data.tolist())
 
         # read in the NetworkX graph. It is formatted as follows:
@@ -544,7 +519,8 @@ def read_data(filenames):
     print "Edges: %i" % (len(G.edges()))
 
     # convert back to a numpy array to make the rest of the logic easier to implement
-    data = np.asarray(data, dtype={'names': sro_col_names, 'formats': sro_col_types})
+    dat_col_names, dat_col_types, dat_col_fmt = dat.select_format(dat_type="sro")
+    data = np.asarray(data, dtype={'names': dat_col_names, 'formats': dat_col_types})
 
     return data, G
 
@@ -570,10 +546,6 @@ def merge_graphs(G, t_G):
         G_edge = G[t_src][t_dst]
         G_edge['weight'] += t_data['weight']
         G_edge['line_ids'].extend(t_data['line_ids'])
-
-def write_sro_dat(filename, data):
-    print "Saving %s" % (filename)
-    np.savetxt(filename, data, fmt=sro_col_formats)
 
 def get_good_data(data, i, j, filter_id):
 
