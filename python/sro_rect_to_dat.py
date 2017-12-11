@@ -78,10 +78,10 @@ def average_by_field(container):
     dtype={'names': apass.fredbin_col_names, 'formats': apass.fredbin_col_types}
     data = np.asarray(container.data, dtype=dtype)
 
-    x            = (container.rect.x_max + container.rect.x_min) / 2
-    y            = (container.rect.y_max + container.rect.y_min) / 2
-    zone_id      = container.zone_id
-    node_id      = container.node_id
+    x       = (container.rect.x_max + container.rect.x_min) / 2
+    y       = (container.rect.y_max + container.rect.y_min) / 2
+    zone_id = container.zone_id
+    node_id = container.node_id
     cont_id = container.container_id
 
     # Iterate over the fields stored in this container and compute their average.
@@ -90,6 +90,7 @@ def average_by_field(container):
         indexes = np.where(data['field'] == field_id)
         t_data = data[indexes]
         t_container = RectContainer(x, y, t_data, zone_id, node_id, cont_id)
+        t_container.rect = container.rect
         ave_data = average_container(t_container)
         output.append(ave_data)
 
