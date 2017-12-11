@@ -518,9 +518,7 @@ def read_data(filenames):
     print "Nodes: %i" % (len(G.nodes()))
     print "Edges: %i" % (len(G.edges()))
 
-    # convert back to a numpy array to make the rest of the logic easier to implement
-    dat_col_names, dat_col_types, dat_col_fmt = dat.select_format(dat_type="sro")
-    data = np.asarray(data, dtype={'names': dat_col_names, 'formats': dat_col_types})
+    data = dat.list_to_ndarray(data, dat_type="sro")
 
     return data, G
 
