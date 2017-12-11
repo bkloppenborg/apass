@@ -53,14 +53,14 @@ to contents found in the output directories.
 For the purposes of this sample, the following directories are used:
 
     APASS Code:           ~/workspace/apass/python 
-    FRED directory:       /home/data/test-freds
-    APASS save directory: /home/data/apass-test
+    FRED directory:       /home/data/sro-test-data
+    APASS save directory: /home/data/sro-test
     
 Create zones using `make-zones.py`
 
-    ~/workspace/apass/python$ python make-zones.py 
-    Created 3904 zones
-    
+    ~/workspace/apass/python$ python make_zones.py
+    Created 4096 zones
+
 This will result in a `global.json` file in the APASS save directory:
 
     ~/workspace/apass/python$ ls /home/data/apass-test/
@@ -69,54 +69,65 @@ This will result in a `global.json` file in the APASS save directory:
 Next we parse each FRED file and split the data into different zones. To run
 this process, we use the `fred-to-zone.py` script with `.fred` files as input:
 
-    ~/workspace/apass/python$ python fred-to-zone.py /home/data/test-freds/*.fred -j 8
-    Processing FRED file /home/data/test-freds/130112.fred
-    Processing FRED file /home/data/test-freds/130105.fred
-    Processing FRED file /home/data/test-freds/130103.fred
-    Processing FRED file /home/data/test-freds/130107.fred
-    Processing FRED file /home/data/test-freds/130114.fred
-    Processing FRED file /home/data/test-freds/130127.fred
-    Processing FRED file /home/data/test-freds/130202.fred
-    Processing FRED file /home/data/test-freds/130125.fred
+    ~/workspace/apass/python$ python fred_to_zone.py -j 8 /home/data/sro-test-data/*.fred
+    Processing FRED file /home/data/sro-test-data/141111.fred
+    Processing FRED file /home/data/sro-test-data/141127.fred
+    Processing FRED file /home/data/sro-test-data/141024.fred
+    Processing FRED file /home/data/sro-test-data/141108.fred
+    Processing FRED file /home/data/sro-test-data/141110.fred
+    Processing FRED file /home/data/sro-test-data/141126.fred
     ...
+    A list of modified files has been written to /home/data/sro-test/fred-to-zone-modified-files.txt
     
 This command will generate a series of `.fredbin` files along with a
 `*-contrib.txt` file as seen in the output directory below:
 
-    ~/workspace/apass/python$ ls /home/data/apass-test/ | head -n 5
+    /home/data/sro-test$ ls | head -n 6
+    fred-to-zone-modified-files.txt
     global.json
-    z00001-contrib.txt
-    z00001.fredbin
-    z00008-contrib.txt
-    z00008.fredbin
-  
+    z00650-contrib.txt
+    z00650.fredbin
+    z00652-contrib.txt
+    z00652.fredbin
   
 The `.fredbin` files are a binary representation of the `.fred` files with a few
 additonal columns (for bookkeeping zone, node, and container IDs) appended to
 the end. If you wish to see the content of the `.fredbin`, there is a `dump-fredbin.py`
-script included with the data reduction pipeline.
+script included with the data reduction pipeline. The `.contrib` files describe
+which FRED files contributed to data in that zone.
 
-Next we parse the zone data and segment the measurements into separate bins, one
-for each star. Internally, the bins are represented as bounding rectangles whose
-bounds encompass all of the measurements for a star, plus a small (few arcsecond)
-border to serve as padding. This stage of the pipeline is accomplished using the
-`zone-to-rects.py` script:
+The `fred-to-zone-modified-files.txt` file contains a list of all fredbin files
+modified by the execution of `fred-to-zone.py`. You can use bash to expand the
+contents of that file to feed in to the next stage of the pipeline as follows:
 
-    ~/workspace/apass/python$ python zone-to-rects.py /home/data/apass-test/*.fredbin -j 8
-    Processing '/home/data/apass-test/z00001.fredbin' which has 231 data points 
-    Processing '/home/data/apass-test/z00056.fredbin' which has 3342 data points 
-    Processing '/home/data/apass-test/z00130.fredbin' which has 2714 data points 
-    Processing '/home/data/apass-test/z00171.fredbin' which has 634 data points 
-    Processing '/home/data/apass-test/z00212.fredbin' which has 6227 data points 
-    Processing '/home/data/apass-test/z00255.fredbin' which has 20577 data points 
-    Processing '/home/data/apass-test/z00418.fredbin' which has 27033 data points
+    python zone-to-rects.py $(< fred-to-zone-modified-files.txt)
+
+Next we parse the zone data and insert the data into a quadtree data structure,
+separating the data into discrete bins called "containers". These containers will
+(ideally) store measurements for precisely one star, but due to limited resolution
+of the telescope and astrometric errors, it is possible that more than one star's
+data will end up in a container. These blends will be addressed in a later step.
+This stage of the pipeline is completed using the `zone-to-rects.py` script:
+
+    ~/workspace/apass/python$ python zone_to_rects.py -j 8 /home/data/sro-test/*.fredbin
+    Processing '/home/data/sro-test/z00705.fredbin' which has 12 data points 
+    Processing '/home/data/sro-test/z00652.fredbin' which has 3595 data points 
+    Processing '/home/data/sro-test/z00650.fredbin' which has 1566 data points 
+    Processing '/home/data/sro-test/z00727.fredbin' which has 370 data points 
     ...
-    
-After this command executes, you will find directory contents similar to the following:
-    
-    ~/workspace/apass/python$ ls /home/data/apass-test/ | head -n 10
+    A list of modified files has been written to /home/data/sro-test/zone-to-rects-modified-files.txt
+
+The zone-to-rect step of the pipeline is the longest operation of all of the
+pipeline stages. You can use the `zone-to-rects-modified-files.txt` to supply
+files to the `rect-to-dat` stage of the pipeline using the `$(< filename)`
+expansion  operator.
+
+After the zone-to-rects script completes, you will find directory contents 
+similar to the following:
+ 
+    /home/data/sro-test$ ls | head -n 11
+    fred-to-zone-modified-files.txt
     global.json
-    ...
     z00650-border-rects.json
     z00650-container.fredbin
     z00650-contrib.txt
@@ -126,15 +137,12 @@ After this command executes, you will find directory contents similar to the fol
     z00652-container.fredbin
     z00652-contrib.txt
     z00652.fredbin
-    z00652-zone.json
-    ...
-
 
 The `*-container.fredbin` files contain the same data as the previous `.fredbin`
 files, but are now sorted/grouped by star and contain non-zero entries for the
-node and container IDs. The script also generates a series of
-`*-border-rects.json` files which describe any rectangles that might span more
-than one zone.
+node and container IDs. 
+The script also generates a series of `*-border-rects.json` files which 
+describe any containers whose data might span more than one zone.
     
 Next we check for any overlaps between zones using `fix-zone-overlaps.py`. At
 present this step does not have a parallel execution option. It automatically
@@ -168,34 +176,34 @@ checked multiple times.
 
 Lastly we convert the stellar measurements in the containers (e.g.
 `*-container.fredbin` files) into summarized data entries. This is accomplished
-using the `rect-to-data.py` script as follows:
+using the `rect-to-dat.py` script. There is a specific script for APASS and
+SRO data. Here is some representative output data for the SRO data set above:
 
-    ~/workspace/apass/python$ python apass-rect-to-data.py /home/data/apass-test/*-container.fredbin -j 8
-    Processing zone z00055
-    Processing zone z00001
-    Processing zone z00129
-    Processing zone z00169
-    Processing zone z00210
-    Processing zone z00252
-    Processing zone z00415
-    Processing zone z00481
+    ~/workspace/apass/python$ python sro_rect_to_dat.py -j8 /home/data/sro-test/*-container.fredbin 
+    Processing zone z00650
+    Processing zone z00688
+    Processing zone z00652
+    Processing zone z00705
     ...
+    Processing zone z04089
+    Time elapsed: 746s
 
-It will generate a series of `.dat` files that contain averaged RA, DEC, one
-magnitude for each APASS photometric filter, and all corresponding
-uncertainties:
-    
-    ~/workspace/apass/python$ ls /home/data/apass-test/ | head -n 10
+The `rect-to-dat` scripts parse each zone, filters the data, averages the resulting
+data, and writes the results along with some metadata to a `.dat` file. The
+SRO-specific script will also generate a NetworkX Graph file (`.p`) which 
+contains information on containers filled with data from multiple fields.
+The output directory should look similar to the following:
+
+    /home/data/sro-test$ ls | head -n 15
+    fred-to-zone-modified-files.txt
     global.json
-    z00001-border-rects.json
-    z00001-container.fredbin
-    z00001-contrib.txt
-    z00001.dat
-    z00001.fredbin
-    z00001-zone.json
-    z00008-border-rects.json
-    z00008-container.fredbin
-    z00008-contrib.txt
+    z00650-border-rects.json
+    z00650-container.fredbin
+    z00650-contrib.txt
+    z00650.dat
+    z00650.fredbin
+    z00650.p
+    ...
 
 Once you are satisfied with the data reduction, simply concatinate the `.dat` files.
 On Linux- or Unix-based machines, you can do this:
