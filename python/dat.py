@@ -5,6 +5,8 @@
 
 import numpy as np
 
+valid_formats = ['apass', 'sro']
+
 # data format for output data.
 std_dat_names = ['field_id', 'ra', 'ra_sig', 'dec', 'dec_sig',
                  'zone_id', 'node_id', 'container_id',
@@ -72,12 +74,12 @@ def read_dat(filename, dat_type="apass"):
     data = np.loadtxt(filename, dtype=dtype)
 
     # convert ra/dec errors from arcmin to deg
-    data['ra_sig']  /= 3600
-    data['dec_sig'] /= 3600
+    data['ra_sig']  /= 60
+    data['dec_sig'] /= 60
     # convert container sizes to arcseconds (or square arcseconds)
-    data['container_width']  /= (86400)
-    data['container_height'] /= (86400)
-    data['container_area']   /= (86400 * 86400)
+    data['container_width']  /= (3600)
+    data['container_height'] /= (3600)
+    data['container_area']   /= (3600 * 3600)
 
     return data
 
@@ -87,12 +89,12 @@ def write_dat(filename, data, dat_type="apass"):
     dat_col_names, dat_col_types, dat_col_fmt = select_format(dat_type)
 
     # convert RA/DEC errors to arcmin
-    data['ra_sig']  *= 3600
-    data['dec_sig'] *= 3600
+    data['ra_sig']  *= 60
+    data['dec_sig'] *= 60
     # convert container sizes to arcseconds (or square arcseconds)
-    data['container_width']  *= (86400)
-    data['container_height'] *= (86400)
-    data['container_area']   *= (86400 * 86400)
+    data['container_width']  *= (3600)
+    data['container_height'] *= (3600)
+    data['container_area']   *= (3600 * 3600)
 
     # save to text
     np.savetxt(filename, data, fmt=dat_col_fmt)
@@ -136,5 +138,12 @@ def fill_none_values(a_dict, keys, value):
         if a_dict[k] == None:
             a_dict[k] = value
 
+def list_to_ndarray(a_list, dat_type="apass"):
+    """Converts a list containing data in dat column format to a numpy.ndarray"""
 
+    # convert back to a numpy array to make the rest of the logic easier to implement
+    dat_col_names, dat_col_types, dat_col_fmt = select_format(dat_type=dat_type)
+    data = np.asarray(a_list, dtype={'names': dat_col_names, 'formats': dat_col_types})
+
+    return data
 
