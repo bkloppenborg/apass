@@ -20,7 +20,7 @@ class RectContainer(dict):
         self.moved_container_id = -1
         self.num_data = 0
 
-        dr = 2. / (60 * 60) # 2 arcsecond in degrees
+        dr = 1. / (60 * 60) # 1 arcsecond in degrees
         dx = dr * cos(y * pi /  180)
         dy = dr
         self.rect = Rect(x - dx, x + dx, y - dy, y + dy)

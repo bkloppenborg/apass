@@ -16,6 +16,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.ticker import NullFormatter
 from scipy.stats import norm
 from scipy.optimize import least_squares
+import sys
 
 # quadtree data structure
 from quadtree import *
@@ -81,27 +82,58 @@ def main():
     print("Comparing magnitudes")
     leaves = tree.get_leaves()
     results = []
+    max_size = 0
     for leaf in leaves:
         for container in leaf.containers:
             # skip containers with only one entry
             if len(container.data) == 1:
                 continue
             else:
-                comp = container.data[0]
-                ref = container.data[1]
+                ref  = None
+                comp = None
 
-                temp = comp_file.make_comp_dict()
-                temp['ra']  = ref['ra']
-                temp['dec'] = ref['dec']
+                # find the reference star. It will not have a 'field_id' column
+                for star in container.data:
+                    if 'field_id' not in star.dtype.names:
+                        ref = star
 
-                try:
-                    temp['field_id']     = comp['field_id']
-                    temp['zone_id']      = comp['zone_id']
-                    temp['node_id']      = comp['node_id']
-                    temp['container_id'] = comp['container_id']
-                except ValueError:
+                if ref is None:
                     continue
 
+                # extract the reference RA/DEC
+                ref_ra  = ref['ra']
+                ref_dec = ref['dec']
+
+                # find the closest star astrometrically to the reference star
+                best_dist_2 = sys.float_info.max
+                for star in container.data:
+                    if star == ref:
+                        continue
+
+                    if 'field_id' not in star.dtype.names:
+                        continue
+
+                    star_ra  = star['ra']
+                    star_dec = star['dec']
+                    dist_2   = (ref_ra - star_ra)**2 + (ref_dec - star_dec)**2
+                    if dist_2 < best_dist_2:
+                        best_dist_2 = dist_2
+                        comp = star
+
+                if comp is None:
+                    continue
+
+                # build up the comparison dictionary.
+                temp = comp_file.make_comp_dict()
+                temp['ra']           = ref_ra
+                temp['dec']          = ref_dec
+                temp['field_id']     = comp['field_id']
+                temp['zone_id']      = comp['zone_id']
+                temp['node_id']      = comp['node_id']
+                temp['container_id'] = comp['container_id']
+
+                # compute the deltas for each magnitude
+                # A data set might not have some data, so try-catch it
                 for key in apass_filters:
                     delta = 99.999
                     try:
