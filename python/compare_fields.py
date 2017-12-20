@@ -11,6 +11,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 # matplotlib, set to PNG output by default
 #import matplotlib as mpl
 #mpl.use('Agg')
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import NullFormatter
@@ -29,7 +30,7 @@ from make_zones import merge_polar_zones, number_zones
 import dat
 import comp_file
 
-valid_ref_formats = ['sdss']
+valid_ref_formats = ['sdss', 'cmc']
 
 apass_filters = ['B', 'B_V', 'V', 'sg', 'sr', 'si']
 
@@ -61,6 +62,8 @@ def main():
     ref_data = None
     if args.ref_format == "sdss":
         ref_data = read_sdss(args.ref_file)
+    elif args.ref_format == "cmc":
+        ref_data = read_cmc14(args.ref_file)
     else:
         print("The reference input type is unsupported.")
 
@@ -151,12 +154,34 @@ def main():
     filename = basename + ".comp"
     results = comp_file.dicts_to_ndarray(results)
     comp_file.write(filename, results)
-    print("Wrote output to %s" % (filename))
+    print("Wrote %i records to to %s" % (len(results), filename))
 
     # 8. Generate some plots
+    plot_filters = []
+    if args.ref_format == "sdss":
+        plot_filters = ['sg', 'sr', 'si']
+    elif args.ref_format == "cmc":
+        plot_filters = ['sr']
+
+    field_ids = set(results['field_id'])
+    colors = np.zeros(len(results))
+    color = 0
+    for field_id in field_ids:
+        indexes = np.where((results['field_id'] == field_id))
+        colors[indexes] = color
+        color += 1
+
+    #for filter_name in plot_filters:
+    #    x = results['ra']
+    #    y = results['dec']
+    #    z = results[filter_name]
+    #    fig = plt.figure()
+    #    ax = fig.add_subplot(111, projection='3d')
+    #    ax.scatter(x,y,z, c=colors)
+    #    ax.set_zlim([-1,1])
+    #    plt.show()
 
     # first plot, residuals vs. RA
-    plot_filters = ['sg', 'sr', 'si']
     x = results['ra']
     for filter_name in plot_filters:
         y = results[filter_name]
@@ -179,10 +204,16 @@ def main():
 
 def gaussian_func(params, x, y):
     A, mu, sigma = abs(params)
-    resid =  (A * np.exp(-(x-mu)**2 / sigma)) - y
+    resid = (A * np.exp(-(x-mu)**2 / sigma)) - y
+    return resid
+
+def linear_func(params, x, y):
+    m, b = params
+    resid = y - (m*x + b)
     return resid
 
 def scatter_histogram(x, y, hist_x_max=None, hist_y_max=None,
+                      colors="#1f77b4",
                       xlabel="Magnitude (mag)",
                       ylabel="Residuals (stdevs)",
                       ylim = (-20, 20)):
@@ -198,7 +229,22 @@ def scatter_histogram(x, y, hist_x_max=None, hist_y_max=None,
 
     #ax_scatter.set_xlim(xlim)
     ax_scatter.set_ylim(ylim)
-    ax_scatter.scatter(x, y, marker='.')
+    ax_scatter.scatter(x, y, c=colors, marker='.')
+
+    # plot a line using only "good" values
+    indexes = np.where((-0.5 < y) & (y < 0.5))
+    line_x = x[indexes]
+    line_y = y[indexes]
+    params = [0, 0]
+    result = least_squares(linear_func, params,  args=(line_x, line_y))
+    m,b = result.x
+    line_y = m * line_x + b
+    ax_scatter.plot(line_x, line_y, color='black')
+    delta_mag = (max(line_x) - min(line_x)) * m
+    label = '$m=%0.4f$\n$\Delta mag = %0.4f$' % (m, delta_mag)
+    ax_scatter.text(0.05, 0.95, label,
+                    transform=ax_scatter.transAxes,
+                    fontsize=10, verticalalignment='top')
 
     n, bins, patches = ax_y_hist.hist(y, bins=bins, range=ylim, orientation='horizontal')
     plot_info['hist_y_max'] = 1.10 * max(n)
@@ -233,10 +279,11 @@ def scatter_histogram(x, y, hist_x_max=None, hist_y_max=None,
     return plot_info
 
 def read_sdss(filename):
-    """Reads in pertinent values from a SDSS-formatted file, namely """
+    """Reads in pertinent values from a SDSS-formatted file (namely RA, DEC,
+    sg, sr, si) and returns the result as a numpy structured array."""
 
     # d d c                     S    RAJ        DEJ          umag   e_umag gmag   e_gmag rmag   e_rmag imag   e_imag zmag   e_zmag
-    # e e l SDSS9               9 Im 2000 (deg) 2000 (deg) Q (mag)  (mag)  (mag)  (mag)  (mag)  (mag)  (mag)  (mag)  (mag)  (mag) 
+    # e e l SDSS9               9 Im 2000 (deg) 2000 (deg) Q (mag)  (mag)  (mag)  (mag)  (mag)  (mag)  (mag)  (mag)  (mag)  (mag)
     # - - - ------------------- - -- ---------- ---------- - ------ ------ ------ ------ ------ ------ ------ ------ ------ ------
     # 1 + 6 J114806.59-013005.6   Im 177.027478 -01.501561 3 15.347  0.004 14.095  0.007 13.082  0.003 13.216  0.002 12.813  0.003
 
@@ -293,6 +340,32 @@ def read_sdss(filename):
 
     return data
 
+def read_cmc14(filename):
+    """Reads a CMC14 file and extracts RA, DEC, sr, sr_sig.
+    Returns values as a numpy structured array"""
+
+    # the CMC data is in the following format:
+    #RA              DEC             filter  mag     mag_err
+    #176.917912      0.309793        r'      14.169  0.028
+
+    data = []
+    with open(filename, 'r') as infile:
+        for line in infile:
+            ra     = float(line[0:12])
+            dec    = float(line[12:26])
+            sr     = float(line[39:46])
+            sr_sig = float(line[46:53])
+
+            data.append((ra, dec, sr, sr_sig, 0, 0, 0))
+
+    col_names = ['ra', 'dec', 'sr', 'sr_sig',
+                 'zone_id', 'node_id', 'container_id']
+    col_types = ['float32', 'float32', 'float32', 'float32',
+                 'int', 'int', 'int']
+    dtype={'names': col_names,'formats': col_types}
+    data = np.asarray(data, dtype=dtype)
+
+    return data
 
 if __name__ == "__main__":
     main()

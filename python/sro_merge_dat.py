@@ -387,6 +387,7 @@ def merge_by_wavefront(data, wavefront, G):
     merge_by_wavefront(data, wavefront, G)
 
 def merge_pointings(data, field_i, neighbors, G):
+    """Merges the data from field_i into the reference frame of the neighbors"""
 
     global fig_residuals_in
     global fig_residuals_out
@@ -403,8 +404,18 @@ def merge_pointings(data, field_i, neighbors, G):
     for neighbor in neighbors:
         neighbor_data = G.node[neighbor]
         if neighbor_data['merged'] == True:
-            edge_data = G.get_edge_data(field_i, neighbor)
-            data_row_pairs.extend(edge_data['line_ids'])
+            # get edges neighbor -> field_i
+            edge_data = G.get_edge_data(neighbor, field_i)
+            for src,dst in edge_data['line_ids']:
+                # BUGFIX: Sometimes the line data will have field_i -> neighbor values.
+                # The order is important as we perform a linear least squares fit to put
+                # field_i into the frame of the neighbors below. Fix this by reversing
+                # the order if the direction is backwards
+                if data[dst]['field_id'] != field_i:
+                    data_row_pairs.append([dst,src])
+                else:
+                    data_row_pairs.append([src,dst])
+            #data_row_pairs.extend(edge_data['line_ids'])
 
     # select the data from field_i
     indexes = np.where(data['field_id'] == field_i)
@@ -420,15 +431,24 @@ def merge_pointings(data, field_i, neighbors, G):
         # Use stars brighter than MAX_MERGE_MAG to determine the deltas between
         # fields
         fit_indexes = np.where((x <= MAX_MERGE_MAG) & (y <= MAX_MERGE_MAG))
-        x_t = x[fit_indexes]
+        x_t     = x[fit_indexes]
         x_sig_t = x_sig[fit_indexes]
-        y_t = y[fit_indexes]
+        y_t     = y[fit_indexes]
         y_sig_t = y_sig[fit_indexes]
 
+        # run the fit once to find residuals, trim off any values more than
+        # five sigma
+        resid = delta_mag_func([0.0], x_t, y_t, x_sig_t, y_sig_t)
+        fit_indexes = np.where((resid < 5.0))
+        x_t     = x_t[fit_indexes]
+        x_sig_t = x_sig_t[fit_indexes]
+        y_t     = y_t[fit_indexes]
+        y_sig_t = y_sig_t[fit_indexes]
+
         # run a least-squares fit between the two fields
-        params = [0]
-        results = least_squares(delta_mag_func, params, args=(x_t, y_t, x_sig_t, y_sig_t))
-        params = results.x
+        params  = [0]
+        results = least_squares(delta_mag_func, params, args =(x_t, y_t, x_sig_t, y_sig_t))
+        params  = results.x
 
         print "  %3s delta: %+f, num: %i" % (filter_id, params[0], len(x_t))
 
@@ -436,7 +456,7 @@ def merge_pointings(data, field_i, neighbors, G):
         # out of the array, apply the delta, and copy them back.
         good_value_indexes = np.where(merge_field_data[filter_id] <= BAD_MAG_VALUE)
         good_rows = merge_field_data[good_value_indexes]
-        good_rows[filter_id] += params[0]
+        good_rows[filter_id] -= params[0]
         merge_field_data[good_value_indexes] = good_rows
 
         # don't include B-V in plots
