@@ -4,6 +4,7 @@
 import argparse
 import sys, os
 from multiprocessing import Pool
+from functools import partial
 
 # for plots
 import numpy as np
@@ -134,7 +135,7 @@ def get_zone_from_coordinates(x,y):
     global global_tree
     return global_tree.find_leaf(x,y)
 
-def load_zone(zone_id):
+def load_zone(save_dir, zone_id):
     """Loads the tree, data, and border info file for the specified zone.
     Returns this data as a dictionary keyed as follows:
      * json_filename
@@ -153,9 +154,9 @@ def load_zone(zone_id):
     load_succeeded = True
     lock = None
 
-    zone_json_file        = apass.apass_save_dir + apass.name_zone_json_file(zone_id)
-    zone_container_file   = apass.apass_save_dir + apass.name_zone_container_file(zone_id)
-    zone_border_info_file = apass.apass_save_dir + apass.name_zone_border_file(zone_id)
+    zone_json_file        = save_dir + apass.name_zone_json_file(zone_id)
+    zone_container_file   = save_dir + apass.name_zone_container_file(zone_id)
+    zone_border_info_file = save_dir + apass.name_zone_border_file(zone_id)
 
     lock = FileLock(zone_container_file)
     lock.acquire()
@@ -174,7 +175,7 @@ def load_zone(zone_id):
     if load_succeeded:
         zone_border_info = apass.load_border_info(zone_border_info_file)
         zone_tree = QuadTreeNode.from_file(zone_json_file, leafClass=RectLeaf)
-        apass.load_zone_data(zone_tree, apass.apass_save_dir)
+        apass.load_zone_data(zone_tree, save_dir)
 
     zone_dict['json_filename']        = zone_json_file
     zone_dict['container_filename']   = zone_container_file
@@ -208,7 +209,7 @@ def save_zone(zone_dict):
     # release the lock
     lock.release()
 
-def fix_zone_overlaps(zone_index):
+def fix_zone_overlaps(save_dir, zone_index):
     """Fixes zone overlaps between adjacent nodes.
 
     Requires global_tree_filename is loaded into the global namespace."""
@@ -226,7 +227,7 @@ def fix_zone_overlaps(zone_index):
     print("Processing Zone: %i" % (zone_id))
 
     # Load the zone
-    zone_dict = load_zone(zone_id)
+    zone_dict = load_zone(save_dir, zone_id)
     tree = zone_dict['tree']
     border_infos = zone_dict['border_info']
 
@@ -314,6 +315,7 @@ def wrap_bounds(ra, dec):
 def main():
     parser = argparse.ArgumentParser(
         description='Resolves instances where star data spans a zone boundary')
+    parser.add_argument('save_dir', help="Directory to save the output files.")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
@@ -322,7 +324,7 @@ def main():
     args = parser.parse_args()
 
     global global_tree_filename
-    global_tree_filename = apass.apass_save_dir + "/global.json"
+    global_tree_filename = args.save_dir + "/global.json"
 
     # determine the size of the image
     global width
@@ -399,12 +401,15 @@ def process_indices(zone_indices, args):
     # set up parallel launches
     pool = Pool(args.jobs)
 
+    # create a partial to store the save directory
+    fzo_func = partial(fix_zone_overlaps, args.save_dir)
+
     if args.debug:
         for zone_index in zone_indices:
             #print zone_index
-            fix_zone_overlaps(zone_index)
+            fzo_func(zone_index)
     else:
-        result = pool.imap(fix_zone_overlaps, zone_indices)
+        result = pool.imap(fzo_func, zone_indices)
         pool.close()
         pool.join()
 

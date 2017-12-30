@@ -18,12 +18,14 @@ from functools import partial
 # APASS-specific things
 from quadtree import *
 from quadtree_types import *
-from apass import *
 from apass_types import *
+import apass
+from fred import read_fredbin
+from border_info import make_border_info, save_border_info
 
-def zone_to_rects(filename):
+def zone_to_rects(save_dir, filename):
     """Processes and APASS zone file into overlapping rectangles"""
-    zone_id = zone_from_name(filename)
+    zone_id = apass.zone_from_name(filename)
 
     global tree_file
 
@@ -34,7 +36,7 @@ def zone_to_rects(filename):
     # find the bounds of this zone using the first data point in the file
     global_tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
     datum = data[0]
-    ra, dec = get_coords(datum)
+    ra, dec = apass.get_coords(datum)
     zone_node = global_tree.find_leaf(ra, dec)
     zone_bounds = zone_node.rect
 
@@ -46,7 +48,7 @@ def zone_to_rects(filename):
     # process
     for datum in np.nditer(data):
         datum = datum.copy()
-        ra, dec = get_coords(datum)
+        ra, dec = apass.get_coords(datum)
         try:
             zone_tree.insert(ra, dec, datum)
         except RuntimeError:
@@ -70,7 +72,7 @@ def zone_to_rects(filename):
     filename = filename_no_ext + '-border-rects.json'
     save_border_info(filename, zone_border_info)
 
-    apass.save_zone_data(zone_tree, apass.apass_save_dir)
+    apass.save_zone_data(zone_tree, save_dir)
 
     # save the zone -> container mapping
     QuadTreeNode.to_file(zone_tree, filename_no_ext + "-zone.json")
@@ -131,7 +133,7 @@ def merge_containers_on_borders(nodes):
             # containers
             for other_node in other_nodes:
                 if other_node is None:
-                    info = apass.make_border_info(container)
+                    info = make_border_info(container)
                     zone_border_rects.update(info)
                 else:
                     other_containers = other_node.get_overlapping_containers(container, remove=True)
@@ -228,30 +230,36 @@ def main():
 
     args = parser.parse_args()
 
+    save_dir = os.path.dirname(os.path.realpath(args.input[0]))
+
     global tree_file
-    tree_file = apass_save_dir + "/global.json"
+    tree_file = save_dir + "/global.json"
+
+    # Construct a partial to serve as the function to call in serial or
+    # parallel mode below.
+    ztr_func = partial(zone_to_rects, save_dir)
 
     # use this for single thread development and debugging
     if args.debug:
         for filename in args.input:
-            zone_to_rects(filename)
+            ztr_func(filename)
     else:
         # generate a pool of threads to process the input
         pool = Pool(args.jobs)
 
         # farm out the work
-        result = pool.imap(zone_to_rects, args.input)
+        result = pool.imap(ztr_func, args.input)
         pool.close()
         pool.join()
 
     # write out a file containing information on the containers modified.
-    mod_file = apass_save_dir + "zone-to-rects-modified-files.txt"
+    mod_file = save_dir + "zone-to-rects-modified-files.txt"
     with open(mod_file, 'w') as outfile:
         for filename in args.input:
             path,fredbin_filename = os.path.split(filename)
             zone_id = apass.zone_from_name(fredbin_filename)
             filename = apass.name_zone_container_file(zone_id)
-            outfile.write(apass_save_dir + filename + "\n")
+            outfile.write(save_dir + filename + "\n")
 
     print("A list of modified files has been written to %s" % (mod_file))
 
