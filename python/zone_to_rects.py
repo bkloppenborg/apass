@@ -22,6 +22,7 @@ from apass_types import *
 import apass
 from fred import read_fredbin
 from border_info import make_border_info, save_border_info
+import zone
 
 def zone_to_rects(save_dir, filename):
     """Processes and APASS zone file into overlapping rectangles"""
@@ -72,7 +73,7 @@ def zone_to_rects(save_dir, filename):
     filename = filename_no_ext + '-border-rects.json'
     save_border_info(filename, zone_border_info)
 
-    apass.save_zone_data(zone_tree, save_dir)
+    zone.save_zone_data(zone_tree, save_dir)
 
     # save the zone -> container mapping
     QuadTreeNode.to_file(zone_tree, filename_no_ext + "-zone.json")
