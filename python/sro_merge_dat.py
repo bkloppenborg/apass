@@ -14,8 +14,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.ticker import NullFormatter
 from scipy.stats import norm
 
-# code cleaning could remove/change this dependency
-from apass import apass_save_dir
+# File I/O
 import dat
 
 # the following are useful includes, but are not mission critical:
@@ -181,13 +180,16 @@ def main():
     start = time.time()
 
     # read in the pointing information
-    pointing_dict = read_sro_centers('data/sro_apass_centers.txt')
+    pointing_dict = read_sro_centers('../data/sro_apass_centers.txt')
 
     # read in the data and overlaping node graph data structure
     data, G = read_data(args.input)
     # enable to see the graph corresponding to the linkages between fields
     #nx.draw_networkx(G)
     #plt.show()
+
+    # determine the save directory for output files
+    save_dir = os.path.dirname(os.path.realpath(args.input[0])) + "/"
 
     # Create a vertex that we can use to quickly look up all fields
     # belonging to a given field_base_id. Insert edges to link it all
@@ -221,7 +223,7 @@ def main():
         nx.draw_networkx(sub_G, pos=pos)
         labels = nx.get_edge_attributes(sub_G,'weight')
         nx.draw_networkx_edge_labels(sub_G, pos, edge_labels=labels)
-        plt.savefig(apass_save_dir + str(field_base_id) + "-graph.png")
+        plt.savefig(save_dir + str(field_base_id) + "-graph.png")
 
         # find the node with the most edges and start there
         edges = sub_G.edges(data=True)
@@ -248,21 +250,21 @@ def main():
         x = fig_residuals_out['x']
         y = fig_residuals_out['y']
         plot_info = scatter_histogram(x,y)
-        plt.savefig(apass_save_dir + str(field_base_id) + "-residuals_out.png")
+        plt.savefig(save_dir + str(field_base_id) + "-residuals_out.png")
 
         plt.figure()
         plt.suptitle("Input properties for field %i" % (field_base_id))
         x = fig_residuals_in['x']
         y = fig_residuals_in['y']
         scatter_histogram(x,y, hist_y_max=plot_info['hist_y_max'])
-        plt.savefig(apass_save_dir + str(field_base_id) + "-residuals_in.png")
+        plt.savefig(save_dir + str(field_base_id) + "-residuals_in.png")
 
         plt.figure()
         plt.suptitle("Uncertainty vs. magnitude for field %i" % (field_base_id))
         x = fig_uncertainty_vs_mag['x']
         y = fig_uncertainty_vs_mag['y']
         scatter_histogram(x,y, ylim=(-0.5,3), ylabel="Uncertainty (mag)")
-        plt.savefig(apass_save_dir + str(field_base_id) + "-uncertainty-vs-magnitude.png")
+        plt.savefig(save_dir + str(field_base_id) + "-uncertainty-vs-magnitude.png")
 
         # verify that everyone was merged in
         for node_id in sub_G.nodes():
@@ -272,11 +274,11 @@ def main():
         # save data specific to this field
         indexes = np.in1d(data['field_id'], sub_G.nodes())
         t_data = data[indexes]
-        filename = apass_save_dir + '/p%i.dat' % (field_base_id)
+        filename = save_dir + '/p%i.dat' % (field_base_id)
         dat.write_dat(filename, t_data, dat_type="sro")
 
     # save data to all fields
-    filename = apass_save_dir + '/pAll.dat' % (field_base_id)
+    filename = save_dir + '/pAll.dat' % (field_base_id)
     dat.write_dat(filename, t_data, dat_type="sro")
 
 
