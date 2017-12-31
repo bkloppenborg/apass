@@ -255,7 +255,7 @@ def main():
         pool.join()
 
     # write out a file containing information on the containers modified.
-    mod_file = save_dir + "zone-to-rects-modified-files.txt"
+    mod_file = save_dir + "/zone-to-rects-modified-files.txt"
     with open(mod_file, 'w') as outfile:
         for filename in args.input:
             path,fredbin_filename = os.path.split(filename)
