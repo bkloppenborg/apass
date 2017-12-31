@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from operator import attrgetter
 import os
+import time
 
 # for the scatter_histogram function
 import matplotlib.gridspec as gridspec
@@ -214,9 +215,13 @@ def main():
         fig_residuals_out = dict(x=list(), y=list())
         fig_uncertainty_vs_mag = dict(x=list(), y=list())
 
+        # construct the field name
         field_name = get_field_name(field_base_id)
+
+        # Find neighbors
         neighbors = nx.all_neighbors(G, field_name)
         sub_G = G.subgraph(neighbors)
+
         # enable to see the graph
         plt.figure(num=None, figsize=(15,15))
         fig_graph_id = plt.gcf().number
@@ -229,6 +234,11 @@ def main():
         # find the node with the most edges and start there
         edges = sub_G.edges(data=True)
         edges = sorted(edges, key=lambda x: x[2]['weight'], reverse=True)
+
+        if len(edges) == 0:
+            print "WARNING: There are no overlapping nodes, skipping."
+            continue
+
         start_node_id = edges[0][0]
         adj_node_id = edges[0][1]
 
@@ -278,10 +288,7 @@ def main():
         filename = save_dir + '/p%i.dat' % (field_base_id)
         dat.write_dat(filename, t_data, dat_type="sro")
 
-    # save data to all fields
-    filename = save_dir + '/pAll.dat' % (field_base_id)
-    dat.write_dat(filename, t_data, dat_type="sro")
-
+    # print timing statistics
     end = time.time()
     print("Time elapsed: %is" % (int(end - start)))
 

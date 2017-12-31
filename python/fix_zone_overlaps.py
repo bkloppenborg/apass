@@ -5,6 +5,7 @@ import argparse
 import sys, os
 from multiprocessing import Pool
 from functools import partial
+import time
 
 # for plots
 import numpy as np

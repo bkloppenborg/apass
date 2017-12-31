@@ -4,9 +4,12 @@
 import argparse
 import os
 import numpy as np
-# suppress FutureWarning from np.average
-import warnings
-warnings.simplefilter(action = "ignore", category = FutureWarning)
+import sys
+import time
+from scipy.stats import norm
+from scipy.optimize import least_squares
+
+# plotting functions
 # matplotlib, set to PNG output by default
 #import matplotlib as mpl
 #mpl.use('Agg')
@@ -14,9 +17,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import NullFormatter
-from scipy.stats import norm
-from scipy.optimize import least_squares
-import sys
+
+# suppress FutureWarning from np.average
+import warnings
+warnings.simplefilter(action = "ignore", category = FutureWarning)
 
 # quadtree data structure
 from quadtree import *

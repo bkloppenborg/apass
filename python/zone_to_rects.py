@@ -2,6 +2,7 @@
 import argparse
 import numpy as np
 import os
+import time
 
 #matplotlib
 import matplotlib as mpl

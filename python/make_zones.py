@@ -1,6 +1,7 @@
 #!/bin/python
 import argparse
 import numpy as np
+import time
 
 # matplotlib
 import matplotlib as mpl

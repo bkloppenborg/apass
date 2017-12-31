@@ -8,6 +8,7 @@ from math import pi
 import inspect
 import glob
 from functools import partial
+import time
 
 # parallel processing
 import multiprocessing as mp
