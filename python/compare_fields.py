@@ -32,8 +32,9 @@ import dat
 import comp_file
 from sdss import read_sdss
 from cmc14 import read_cmc14
+from panstarrs import read_panstarrs
 
-valid_ref_formats = ['sdss', 'cmc']
+valid_ref_formats = ['sdss', 'cmc', 'panstarrs']
 
 apass_filters = ['B', 'B_V', 'V', 'sg', 'sr', 'si']
 
@@ -67,6 +68,8 @@ def main():
         ref_data = read_sdss(args.ref_file)
     elif args.ref_format == "cmc":
         ref_data = read_cmc14(args.ref_file)
+    elif args.ref_format == "panstarrs":
+        ref_data = read_panstarrs(args.ref_file)
     else:
         print("The reference input type is unsupported.")
 
@@ -165,6 +168,8 @@ def main():
         plot_filters = ['sg', 'sr', 'si']
     elif args.ref_format == "cmc":
         plot_filters = ['sr']
+    elif args.ref_format == "panstarrs":
+        plot_filters = ['sg', 'sr', 'si']
 
     field_ids = set(results['field_id'])
     colors = np.zeros(len(results))
