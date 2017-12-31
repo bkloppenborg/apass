@@ -80,7 +80,9 @@ def main():
     parser.add_argument('--plot', dest='plot', help="Plot the generated zones", action='store_true')
     parser.set_defaults(plot=False)
 
+    # parse the command line arguments and start timing the script
     args = parser.parse_args()
+    start = time.time()
 
     global fileid # used in quadtree_types.py
     fileid = apass.north_zone_id + 1 # skip over reserved IDs
@@ -102,6 +104,9 @@ def main():
 
     # write the quadtree
     QuadTreeNode.to_file(tree, zonefile)
+
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 if __name__ == "__main__":
     main()

@@ -56,7 +56,7 @@ For the purposes of this sample, the following directories are used:
     FRED directory:       /home/data/sro-test-data
     APASS save directory: /home/data/sro-test
     
-Create zones using `make-zones.py`
+Create zones using `make_zones.py`
 
     ~/workspace/apass/python$ python make_zones.py
     Created 4096 zones

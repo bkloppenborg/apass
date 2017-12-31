@@ -175,8 +175,9 @@ def main():
     parser.add_argument('input', nargs='+')
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
-    args = parser.parse_args()
 
+    # parse the command-line arguments and start timing the script
+    args = parser.parse_args()
     start = time.time()
 
     # read in the pointing information
@@ -280,6 +281,9 @@ def main():
     # save data to all fields
     filename = save_dir + '/pAll.dat' % (field_base_id)
     dat.write_dat(filename, t_data, dat_type="sro")
+
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 
 def merge_by_greatest_weight(node_id_i, data, G):

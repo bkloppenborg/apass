@@ -154,7 +154,9 @@ def main():
     parser.add_argument('--remove', default=False, action='store_true')
     parser.set_defaults(jobs=1)
 
+    # parse the command line arguments and start timing the script
     args = parser.parse_args()
+    start = time.time()
 
     # load the global tree
     global tree_file
@@ -198,6 +200,8 @@ def main():
 
     print("A list of modified files has been written to %s" % (mod_file))
 
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 if __name__ == "__main__":
     main()

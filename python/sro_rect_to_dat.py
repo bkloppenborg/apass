@@ -268,14 +268,15 @@ def main():
     parser.add_argument('input', nargs='+')
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
-    args = parser.parse_args()
 
+    # Parse the arguments and start timing the script.
+    args = parser.parse_args()
+    start = time.time()
 
     # construct a partial function signature for execution
     save_dir = os.path.dirname(os.path.realpath(args.input[0])) + "/"
     ztd_func = partial(zone_to_dat, save_dir)
 
-    start = time.time()
     # run in debug mode
     if args.debug:
         for zonefile in args.input:

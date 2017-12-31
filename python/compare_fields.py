@@ -51,6 +51,7 @@ def main():
 
     # parse command line arguments
     args = parser.parse_args()
+    start = time.time()
 
     # 1. create the quadtree data structure
     print("Building quadtree data structure")
@@ -208,6 +209,9 @@ def main():
         filename = basename + '-' + title + '.png'
         plt.suptitle(title)
         plt.savefig(filename)
+
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 
 def gaussian_func(params, x, y):

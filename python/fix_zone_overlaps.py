@@ -241,7 +241,9 @@ def main():
                         help="Run in debug mode")
     parser.set_defaults(jobs=1)
 
+    # parse the command line arguments and start timing the script
     args = parser.parse_args()
+    start = time.time()
 
     global global_tree_filename
     global_tree_filename = args.save_dir + "/global.json"
@@ -314,6 +316,9 @@ def main():
             zone_indices = get_active_indices(i, j, stride)
             print("")
             process_indices(zone_indices, args)
+
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 
 def process_indices(zone_indices, args):
