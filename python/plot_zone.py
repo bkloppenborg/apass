@@ -11,6 +11,9 @@ from apass_types import *
 from quadtree import *
 from quadtree_types import *
 
+# file I/O
+import fred
+
 def plot_containers(leaf, axes):
     """Adds patches corresponding to container borders"""
 
@@ -32,6 +35,7 @@ def main():
                         help="Plot borders for containers")
 
     args = parser.parse_args()
+    save_dir = os.path.dirname(os.path.realpath(args.input[0])) + "/"
 
     inputs = args.input
 
@@ -42,17 +46,17 @@ def main():
         print "Plotting zone " + zone_name
 
         # load the original zone data. Note, we don't restore it to the tree
-        zone_datafile = apass.apass_save_dir + apass.name_zone_file(zone_id)
-        zone_data = apass.read_fredbin(zone_datafile)
+        zone_datafile = save_dir + apass.name_zone_file(zone_id)
+        zone_data = fred.read_fredbin(zone_datafile)
         print("Zone file has " + str(zone_data.size) + " entries")
 
         # load the containerized zone data
-        zone_containerfile = apass.apass_save_dir + apass.name_zone_container_file(zone_id)
-        zone_container_data = apass.read_fredbin(zone_datafile)
+        zone_containerfile = save_dir + apass.name_zone_container_file(zone_id)
+        zone_container_data = fred.read_fredbin(zone_datafile)
         print("Zone container file has " + str(zone_container_data.size) + " entries")
 
         # load the zone's tree
-        zone_json = apass.apass_save_dir + apass.name_zone_json_file(zone_id)
+        zone_json = save_dir + apass.name_zone_json_file(zone_id)
         zone_tree = QuadTreeNode.from_file(zone_json, leafClass=RectLeaf)
         leaves = zone_tree.get_leaves()
 
