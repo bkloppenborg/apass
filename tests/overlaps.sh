@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# Filename: python-pipeline.sh
-# Purpose: Tests the Python pipeline against a subset of the SRO and APASS data
+# Filename: overlaps.sh
+# Purpose: Tests the Python pipeline against a fake data that is crafted to
+#          overlap within zones and between zones.
 # Usage: Run the script (no arguments required). It'll stop if there is an error
 
 
 ####
-# End-to-end test for SRO data
+# End-to-end test to check for overlapping data points.
 ####
 export DATA_DIR=../data/overlap-test-data/
 export SAVE_DIR=../data/test-output/
@@ -30,4 +31,10 @@ python ${CODE_DIR}/sro_rect_to_dat.py ${OPTS} ${SAVE_DIR}/*-container.fredbin
 # print out timing statistics
 END=$(date +%s)
 DIFF=$(( $END - $START ))
-echo "SRO pipeline took $DIFF seconds"
+echo "Pipeline took $DIFF seconds"
+
+# plot the four zones
+python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z03351.fredbin --show-containers &
+python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z03394.fredbin --show-containers &
+python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z01985.fredbin --show-containers &
+python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z02028.fredbin --show-containers &
