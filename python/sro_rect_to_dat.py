@@ -16,10 +16,14 @@ from apass_types import *
 from quadtree import *
 from quadtree_types import *
 
+# File I/O
+import fred
 import dat
+import zone
 
 # parallel processing
 import multiprocessing as mp
+from functools import partial
 
 # numpy array manipulation
 import numpy.lib.recfunctions as nprf
@@ -75,7 +79,7 @@ def average_by_field(container):
     output = []
 
     # Get a list of the unique field IDs in the container
-    dtype={'names': apass.fredbin_col_names, 'formats': apass.fredbin_col_types}
+    dtype={'names': fred.fredbin_col_names, 'formats': fred.fredbin_col_types}
     data = np.asarray(container.data, dtype=dtype)
 
     x       = (container.rect.x_max + container.rect.x_min) / 2
@@ -114,7 +118,7 @@ def average_container(container):
     # Read in the data. This will be a numpy.narray object, so we can slice
     # and dice it however we would like.
     data = container.data
-    dtype={'names': apass.fredbin_col_names,'formats': apass.fredbin_col_types}
+    dtype={'names': fred.fredbin_col_names,'formats': fred.fredbin_col_types}
     data = np.asarray(container.data, dtype=dtype)
 
     # add a boolean column to serve as a flag for whether or not a given datum should be used
@@ -189,11 +193,11 @@ def average_container(container):
 
     return output
 
-def zone_to_data(zone_container_filename):
+def zone_to_dat(save_dir, zone_container_filename):
     """Processes all of the rectangles found in zone. Zone should be a valid subdirectory
-    of apass.apass_save_dir"""
+    of save_dir"""
 
-    zone_id = apass.zone_from_name(zone_container_filename)
+    zone_id   = apass.zone_from_name(zone_container_filename)
     zone_name = apass.name_zone(zone_id)
     print "Processing zone " + zone_name
 
@@ -201,9 +205,9 @@ def zone_to_data(zone_container_filename):
     G = nx.Graph()
 
     # load the zone's tree and data from disk and get the leaves
-    zone_json = apass.apass_save_dir + apass.name_zone_json_file(zone_id)
+    zone_json = save_dir + apass.name_zone_json_file(zone_id)
     zone_tree = QuadTreeNode.from_file(zone_json, leafClass=RectLeaf)
-    apass.load_zone_data(zone_tree, apass.apass_save_dir)
+    zone.load_zone_data(zone_tree, save_dir)
     leaves = zone_tree.get_leaves()
 
     # average the data and populate the graph with shared container information
@@ -247,12 +251,12 @@ def zone_to_data(zone_container_filename):
                     edge['weight'] += 1
 
     # write out the average information
-    dat_filename = apass.apass_save_dir + "/" + zone_name + ".dat"
+    dat_filename = save_dir + "/" + zone_name + ".dat"
     averages = dat.dicts_to_ndarray(averages, dat_type = "sro")
     dat.write_dat(dat_filename, averages, dat_type="sro")
 
     # save the graph to a pickle file
-    graph_filename = apass.apass_save_dir + "/" + zone_name + ".p"
+    graph_filename = save_dir + "/" + zone_name + ".p"
     nx.write_gpickle(G, graph_filename)
 
 
@@ -266,15 +270,20 @@ def main():
                         help="Run in debug mode")
     args = parser.parse_args()
 
+
+    # construct a partial function signature for execution
+    save_dir = os.path.dirname(os.path.realpath(args.input[0])) + "/"
+    ztd_func = partial(zone_to_dat, save_dir)
+
     start = time.time()
     # run in debug mode
     if args.debug:
         for zonefile in args.input:
-            zone_to_data(zonefile)
+            ztd_func(zonefile)
     # run in production mode
     else:
         pool = mp.Pool(args.jobs)
-        result = pool.imap(zone_to_data, args.input)
+        result = pool.imap(ztd_func, args.input)
         pool.close()
         pool.join()
 
