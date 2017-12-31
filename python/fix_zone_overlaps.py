@@ -176,6 +176,11 @@ def fix_zone_overlaps(save_dir, zone_index):
         node_id = node.node_id
         container = node.get_container(x,y)
 
+        # produce a nice name for this container
+        dest_name = apass.name_container(container.zone_id,
+                                         container.node_id,
+                                         container.container_id)
+
         # Get the coordinates for the corners of this container
         corners = container.get_corners()
 
@@ -202,10 +207,7 @@ def fix_zone_overlaps(save_dir, zone_index):
             adj_node = adj_tree.find_leaf(c_x, c_y)
             adj_containers = adj_node.get_overlapping_containers(container, remove=False)
 
-            # move any adjacent containers into this container and mark the moved
-            dest_name = apass.name_container(container.zone_id,
-                                             container.node_id,
-                                             container.container_id)
+            # move the adjacent container's data into this container
             for adj_container in adj_containers:
                 # generate nice output
                 src_name = apass.name_container(adj_container.zone_id,
@@ -213,9 +215,11 @@ def fix_zone_overlaps(save_dir, zone_index):
                                             adj_container.container_id)
                 print(" merging %s into %s" % (src_name, dest_name))
                 container.merge(adj_container, mark_moved=True)
-                if dest_name in adj_border_infos.keys():
+
+                # remove the adjacent container from the border info file
+                if src_name in adj_border_infos.keys():
                     #print(" updating border rect file for zone %i" % (adj_zone_id))
-                    del adj_border_infos[dest_name]
+                    del adj_border_infos[src_name]
 
     # All done with the merge. Write out data for all files.
     save_zone(save_dir, zone_dict)
