@@ -232,6 +232,7 @@ def main():
     parser.set_defaults(jobs=1)
 
     args = parser.parse_args()
+    start = time.time()
 
     save_dir = os.path.dirname(os.path.realpath(args.input[0]))
 
@@ -266,6 +267,8 @@ def main():
 
     print("A list of modified files has been written to %s" % (mod_file))
 
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 if __name__ == "__main__":
     main()
