@@ -138,7 +138,8 @@ def merge_containers_on_borders(nodes):
                     info = make_border_info(container)
                     zone_border_rects.update(info)
                 else:
-                    other_containers = other_node.get_overlapping_containers(container, remove=True)
+                    other_containers = other_node.get_overlapping_containers(container)
+                    other_node.remove_containers(other_containers)
                     for other in other_containers:
                         container.merge(other)
 

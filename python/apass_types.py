@@ -133,7 +133,7 @@ class RectLeaf(QuadTreeNode):
 
         return None
 
-    def get_overlapping_containers(self, other_container, remove=False):
+    def get_overlapping_containers(self, other_container):
         """Returns a list of containers that overlaps with other_container.
         If remove=True (default), any overlapping containers will be removed from
         this container, otherwise they will be left intact."""
@@ -142,22 +142,35 @@ class RectLeaf(QuadTreeNode):
             if container.overlaps(other_container):
                 containers.append(container)
 
-        # remove the containers from self.containers if requested
-        if remove:
-            for container in containers:
-                self.containers.remove(container)
-
         return containers
+
+    def remove_containers(self, containers):
+        for container in containers:
+            self.containers.remove(container)
 
     def insert(self, x, y, data):
         """Stores the data inside of a container encapsulated by this node."""
 
-        # build a rectangle container for this data
+        # create a container to store this data
         container = RectContainer(x, y, data)
-        overlappers = self.get_overlapping_containers(container, remove=True)
-        for other in overlappers:
-            container.merge(other)
-        self.containers.append(container)
+
+        # find any overlapping containers, sort by number of contained data in
+        # descending order
+        overlappers = self.get_overlapping_containers(container)
+        overlappers.sort(key=lambda x: x.num_data, reverse=True)
+
+        # Either append the container, or merge things together
+        if len(overlappers) == 0:
+            self.containers.append(container)
+        else:
+            bigger_cont = overlappers[0]
+            other_conts = overlappers[1:]
+
+            bigger_cont.merge(container)
+            for other in other_conts:
+                bigger_cont.merge(other)
+
+            self.remove_containers(other_conts)
 
     def insert_or_drop(self, x, y, data, distance=1):
         """Stores data inside of a container encapsulated by this node if a suitable
