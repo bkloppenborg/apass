@@ -53,3 +53,6 @@ def read_fredbin(filename):
     """Reads in an APASS .fredbin file"""
     dtype={'names': fredbin_col_names,'formats': fredbin_col_types}
     return np.fromfile(filename, dtype)
+
+def write_txt(fredbin_data, filename):
+    np.savetxt(filename + ".txt", fredbin_data, fmt=fredbin_savetxt_fmt)
