@@ -177,15 +177,24 @@ class RectLeaf(QuadTreeNode):
         container is found within the specified distance"""
 
         container = RectContainer(x, y, data)
-        overlappers = self.get_overlapping_containers(container, remove=True)
 
-        # if no overlapping container is found, drop the data
+        # find any overlapping containers, sort by number of contained data in
+        # descending order
+        overlappers = self.get_overlapping_containers(container)
+        overlappers.sort(key=lambda x: x.num_data, reverse=True)
+
+        # Either append the container, or merge things together
         if len(overlappers) == 0:
-            return
+            pass # drop the entry
+        else:
+            bigger_cont = overlappers[0]
+            other_conts = overlappers[1:]
 
-        for other in overlappers:
-            container.merge(other)
-        self.containers.append(container)
+            bigger_cont.merge(container)
+            for other in other_conts:
+                bigger_cont.merge(other)
+
+            self.remove_containers(other_conts)
 
     def load_data(self, data):
         """Restores the specified data to the container. Used in object restoration."""
