@@ -27,4 +27,12 @@ def read_panstarrs(filename):
     data = nprf.append_fields(data, extra_col_names, [tmp, tmp, tmp],
                               dtypes=extra_col_types)
 
+    # filter out stars with large uncertainties
+    indexes = np.where((data['sg_sig'] < 999) &
+                       (data['sr_sig'] < 999) &
+                       (data['si_sig'] < 999) &
+                       (data['sz_sig'] < 999))
+
+    data = data[indexes]
+
     return data
