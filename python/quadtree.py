@@ -236,6 +236,14 @@ class QuadTreeNode(dict):
         # hopefully we never encounter this...
         raise RuntimeError("Could not find a node containing the point (%f, %f)" % (x,y))
 
+    def insert_or_drop(self, x, y, datum):
+        """Traverse the tree from the root towards the leaves and insert the
+        data into the appropriate leaf. If the leaf does not exist, the data
+        are dropped."""
+        for child in self.children:
+            if child.contains(x, y):
+                return child.insert_or_drop(x, y, datum)
+
     def is_leaf(self):
         """Returns true if the node is a leaf."""
         return not self.has_children()

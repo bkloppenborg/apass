@@ -4,6 +4,8 @@
 import argparse
 import sys, os
 from multiprocessing import Pool
+from functools import partial
+import time
 
 # for plots
 import numpy as np
@@ -15,13 +17,9 @@ import matplotlib.pyplot as plt
 
 # local includes
 import apass
-from apass_types import *
 from quadtree import QuadTreeNode
 from quadtree_types import *
-
-# custom modules
-sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
-from filelock import FileLock
+from zone import load_zone, save_zone
 
 def get_active_indices(i, j, stride):
     """Returns list of indices selected from (i,j) in steps of stride in each direction."""
@@ -134,90 +132,14 @@ def get_zone_from_coordinates(x,y):
     global global_tree
     return global_tree.find_leaf(x,y)
 
-def load_zone(zone_id):
-    """Loads the tree, data, and border info file for the specified zone.
-    Returns this data as a dictionary keyed as follows:
-     * json_filename
-     * container_filename
-     * border_info_filename
-     * border_info
-     * tree
-     * loaded
-     * lock (a FileLock instance)"""
 
-    #print(" Loading zone %i" % (zone_id))
-
-    zone_dict = dict()
-    zone_tree = None
-    zone_border_info = None
-    load_succeeded = True
-    lock = None
-
-    zone_json_file        = apass.apass_save_dir + apass.name_zone_json_file(zone_id)
-    zone_container_file   = apass.apass_save_dir + apass.name_zone_container_file(zone_id)
-    zone_border_info_file = apass.apass_save_dir + apass.name_zone_border_file(zone_id)
-
-    lock = FileLock(zone_container_file)
-    lock.acquire()
-
-    # verify the necessary files exist, if not bail
-    if not os.path.isfile(zone_json_file):
-#        print(" WARNING: JSON file missing for zone %i" % (zone_id))
-        load_succeeded = False
-    if not os.path.isfile(zone_border_info_file):
-#        print(" WARNING: Border Info file missing for zone %i" % (zone_id))
-        load_succeeded = False
-    if not os.path.isfile(zone_container_file):
-#        print(" WARNING: Container data file missing for zone %i" % (zone_id))
-        load_succeeded = False
-
-    if load_succeeded:
-        zone_border_info = apass.load_border_info(zone_border_info_file)
-        zone_tree = QuadTreeNode.from_file(zone_json_file, leafClass=RectLeaf)
-        apass.load_zone_data(zone_tree, apass.apass_save_dir)
-
-    zone_dict['json_filename']        = zone_json_file
-    zone_dict['container_filename']   = zone_container_file
-    zone_dict['border_info_filename'] = zone_border_info_file
-    zone_dict['tree']                 = zone_tree
-    zone_dict['border_info']          = zone_border_info
-    zone_dict['loaded']               = load_succeeded
-    zone_dict['lock']                 = lock
-    return zone_dict
-
-def save_zone(zone_dict):
-    """Saves the zone data to disk. The zone_dict format matches the
-    format found in load_zone above."""
-
-    json_file        = zone_dict['json_filename']
-    container_file   = zone_dict['container_filename']
-    border_info_file = zone_dict['border_info_filename']
-    tree             = zone_dict['tree']
-    border_info      = zone_dict['border_info']
-    load_succeeded   = zone_dict['loaded']
-    lock             = zone_dict['lock']
-
-    zone_id = apass.zone_from_name(zone_container_file)
-    #print("Saving zone %i" % (zone_id))
-
-    # save the data to disk
-    apass.save_zone_data(tree, apass.apass_save_dir)
-    apass.save_border_info(border_info_file, border_info)
-    QuadTreeNode.to_file(tree, json_file)
-
-    # release the lock
-    lock.release()
-
-def fix_zone_overlaps(zone_index):
+def fix_zone_overlaps(save_dir, zone_index):
     """Fixes zone overlaps between adjacent nodes.
 
     Requires global_tree_filename is loaded into the global namespace."""
 
     # load the global tree
-    global global_tree_filename
     global global_tree
-
-    # load the global tree
     global_tree = QuadTreeNode.from_file(global_tree_filename, leafClass=IDLeaf)
 
     # Get this zone and its ID
@@ -226,7 +148,7 @@ def fix_zone_overlaps(zone_index):
     print("Processing Zone: %i" % (zone_id))
 
     # Load the zone
-    zone_dict = load_zone(zone_id)
+    zone_dict = load_zone(save_dir, zone_id)
     tree = zone_dict['tree']
     border_infos = zone_dict['border_info']
 
@@ -242,7 +164,7 @@ def fix_zone_overlaps(zone_index):
     adj_zone_dicts = dict()
     for adj_zone in get_adjacent_zones(i, j):
         z_id = adj_zone.node_id
-        adj_zone_dicts[z_id] = load_zone(z_id)
+        adj_zone_dicts[z_id] = load_zone(save_dir, z_id)
 
     # iterate over this zone's border rectangles and merge overlapping entries
     for key, info in border_infos.iteritems():
@@ -253,6 +175,11 @@ def fix_zone_overlaps(zone_index):
         node = tree.find_leaf(x,y)
         node_id = node.node_id
         container = node.get_container(x,y)
+
+        # produce a nice name for this container
+        dest_name = apass.name_container(container.zone_id,
+                                         container.node_id,
+                                         container.container_id)
 
         # Get the coordinates for the corners of this container
         corners = container.get_corners()
@@ -280,10 +207,7 @@ def fix_zone_overlaps(zone_index):
             adj_node = adj_tree.find_leaf(c_x, c_y)
             adj_containers = adj_node.get_overlapping_containers(container, remove=False)
 
-            # move any adjacent containers into this container and mark the moved
-            dest_name = apass.name_container(container.zone_id,
-                                             container.node_id,
-                                             container.container_id)
+            # move the adjacent container's data into this container
             for adj_container in adj_containers:
                 # generate nice output
                 src_name = apass.name_container(adj_container.zone_id,
@@ -291,14 +215,16 @@ def fix_zone_overlaps(zone_index):
                                             adj_container.container_id)
                 print(" merging %s into %s" % (src_name, dest_name))
                 container.merge(adj_container, mark_moved=True)
-                if name in adj_border_infos.keys():
+
+                # remove the adjacent container from the border info file
+                if src_name in adj_border_infos.keys():
                     #print(" updating border rect file for zone %i" % (adj_zone_id))
-                    del adj_border_infos[name]
+                    del adj_border_infos[src_name]
 
     # All done with the merge. Write out data for all files.
-    save_zone(zone_dict)
+    save_zone(save_dir, zone_dict)
     for key, value in adj_zone_dicts.iteritems():
-        save_zone(value)
+        save_zone(save_dir, value)
 
 def wrap_bounds(ra, dec):
     """Wraps (ra,dec) coordinates at boundaries."""
@@ -314,15 +240,18 @@ def wrap_bounds(ra, dec):
 def main():
     parser = argparse.ArgumentParser(
         description='Resolves instances where star data spans a zone boundary')
+    parser.add_argument('save_dir', help="Directory to save the output files.")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
     parser.set_defaults(jobs=1)
 
+    # parse the command line arguments and start timing the script
     args = parser.parse_args()
+    start = time.time()
 
     global global_tree_filename
-    global_tree_filename = apass.apass_save_dir + "/global.json"
+    global_tree_filename = args.save_dir + "/global.json"
 
     # determine the size of the image
     global width
@@ -393,18 +322,24 @@ def main():
             print("")
             process_indices(zone_indices, args)
 
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
+
 
 def process_indices(zone_indices, args):
 
     # set up parallel launches
     pool = Pool(args.jobs)
 
+    # create a partial to store the save directory
+    fzo_func = partial(fix_zone_overlaps, args.save_dir)
+
     if args.debug:
         for zone_index in zone_indices:
             #print zone_index
-            fix_zone_overlaps(zone_index)
+            fzo_func(zone_index)
     else:
-        result = pool.imap(fix_zone_overlaps, zone_indices)
+        result = pool.imap(fzo_func, zone_indices)
         pool.close()
         pool.join()
 

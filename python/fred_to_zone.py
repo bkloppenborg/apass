@@ -1,10 +1,14 @@
 #!/bin/python
+
+# system includes
 import argparse
 import numpy as np
 from numpy import cos
 from math import pi
 import inspect
 import glob
+from functools import partial
+import time
 
 # parallel processing
 import multiprocessing as mp
@@ -12,8 +16,10 @@ import multiprocessing as mp
 # APASS-specific things
 from quadtree import *
 from quadtree_types import *
-import apass
-from apass import *
+from apass import get_coords, name_zone_file, name_zone_contrib_file, name_zone_file
+
+# File I/O
+from fred import read_fred
 
 import sys, os
 sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
@@ -65,7 +71,7 @@ def build_data_dict(filename):
     return data_dict
 
 
-def add_fred(filename):
+def add_fred(save_dir, filename):
     """Processes an APASS FRED file into zones using data contained in the tree"""
     data_dict = build_data_dict(filename)
     impacted_zones = []
@@ -73,8 +79,8 @@ def add_fred(filename):
     if data_dict is not None:
         # Write out the data being sure to lock all related files prior to opening
         for zone_id, data in data_dict.iteritems():
-            zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
-            contrib_filename = apass_save_dir + '/' + name_zone_contrib_file(zone_id)
+            zone_filename    = save_dir + '/' + name_zone_file(zone_id)
+            contrib_filename = save_dir + '/' + name_zone_contrib_file(zone_id)
 
             with FileLock(zone_filename, timeout=100, delay=0.05):
                 with open(zone_filename, 'a+b') as outfile:
@@ -88,7 +94,7 @@ def add_fred(filename):
 
     return impacted_zones
 
-def remove_fred(filename):
+def remove_fred(save_dir, filename):
     """Removes the data found in the specified file."""
 
     data_dict = build_data_dict(filename)
@@ -102,11 +108,11 @@ def remove_fred(filename):
             print("Checking zone %i" % (zone_id))
             data_removed = False
 
-            zone_filename = apass_save_dir + '/' + name_zone_file(zone_id)
-            contrib_filename = apass_save_dir + '/' + name_zone_contrib_file(zone_id)
+            zone_filename    = save_dir + '/' + name_zone_file(zone_id)
+            contrib_filename = save_dir + '/' + name_zone_contrib_file(zone_id)
 
             with FileLock(zone_filename):
-                zone_data = apass.read_fredbin(zone_filename)
+                zone_data = read_fredbin(zone_filename)
 
                 zone_data = np.sort(zone_data, order=['ra', 'dec'])
                 num_data = len(zone_data)
@@ -141,25 +147,27 @@ def remove_fred(filename):
 def main():
 
     parser = argparse.ArgumentParser(description='Parses .fred files into zone .fredbin files')
-    #parser.add_argument('outdir', help="Directory into which .fredbin files will be generated")
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
+    parser.add_argument('save_dir', help="Directory to save the output files.")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
     parser.add_argument('--remove', default=False, action='store_true')
     parser.set_defaults(jobs=1)
 
+    # parse the command line arguments and start timing the script
     args = parser.parse_args()
-    outdir = apass_save_dir
+    start = time.time()
 
     # load the global tree
     global tree_file
-    tree_file = apass_save_dir + "/global.json"
+    tree_file = args.save_dir + "/global.json"
 
-    # override the function we use if we are removing data
-    fred_func = add_fred
+    # Construct a partial to serve as the function to call in serial or
+    # parallel mode below.
+    fred_func = partial(add_fred, args.save_dir)
     if args.remove:
-        fred_func = remove_fred
+        fred_func = partial(remove_fred, args.save_dir)
 
     # set up the pool and launch the function
     results = []
@@ -182,17 +190,19 @@ def main():
     zone_names = []
     zone_ids = sorted(set(results))
     for zone_id in zone_ids:
-        filename = apass.name_zone_file(zone_id)
+        filename = name_zone_file(zone_id)
         zone_names.append(filename)
 
     # write out a file containing information on the zones modified.
-    mod_file = apass_save_dir + "fred-to-zone-modified-files.txt"
+    mod_file = args.save_dir + "fred-to-zone-modified-files.txt"
     with open(mod_file, 'w') as outfile:
         for filename in zone_names:
-            outfile.write(apass_save_dir + filename + "\n")
+            outfile.write(args.save_dir + '/' + filename + "\n")
 
     print("A list of modified files has been written to %s" % (mod_file))
 
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 if __name__ == "__main__":
     main()

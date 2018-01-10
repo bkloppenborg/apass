@@ -8,14 +8,15 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from operator import attrgetter
 import os
+import time
 
 # for the scatter_histogram function
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import NullFormatter
 from scipy.stats import norm
 
-# code cleaning could remove/change this dependency
-from apass import apass_save_dir
+# File I/O
+import dat
 
 # the following are useful includes, but are not mission critical:
 import time
@@ -33,33 +34,6 @@ MAX_MERGE_MAG = 16 # anything fainter than this value will not be used to determ
 # mags = []
 # mags_sig = []
 # where [] are repeated for each of the filters.
-
-# the SRO data format is as follows:
-# field_id, ra, ra_sig, dec, dec_sig, num_nights, num_observations, V, (B-V), B, sg, sr, si
-sro_filter_names =  ['V', 'B_V', 'B', 'sg', 'sr', 'si']
-sro_num_filters = len(sro_filter_names)
-
-sro_col_names = ['field_id', 'ra', 'ra_sig', 'dec', 'dec_sig', 'num_nights', 'num_observations']
-sro_col_names.extend(['large_mag_diff', 'num_obs_diff',
-                      'large_position_errors', 'large_bounding_boxes'])
-sro_col_names.extend(['num_nights_' + s for s in sro_filter_names])
-sro_col_names.extend(['num_obs_' + s for s in sro_filter_names])
-sro_col_names.extend(sro_filter_names)
-sro_col_names.extend([s + "_sig" for s in sro_filter_names])
-
-sro_col_formats = ['%10s', '%10.6f', '%6.3f', '%10.6f', '%6.3f', '%4i', '%4i']
-sro_col_formats.extend(['%1i'] * 4)                 # flags
-sro_col_formats.extend(['%3i'] * sro_num_filters)   # num_nights
-sro_col_formats.extend(['%3i'] * sro_num_filters)   # num_obs
-sro_col_formats.extend(['%6.3f'] * sro_num_filters) # mags
-sro_col_formats.extend(['%6.3f'] * sro_num_filters) # mags_sig
-
-sro_col_types = ['S10', 'float64', 'float64', 'float64', 'float64', 'int', 'int']
-sro_col_types.extend(['int'] * 4)                   # flags
-sro_col_types.extend(['int'] * sro_num_filters)     # num_nights
-sro_col_types.extend(['int'] * sro_num_filters)     # num_obs
-sro_col_types.extend(['float32'] * sro_num_filters) # num_obs
-sro_col_types.extend(['float32'] * sro_num_filters) # num_obs
 
 def make_pointings(field_base_id, pointings):
 
@@ -202,18 +176,22 @@ def main():
     parser.add_argument('input', nargs='+')
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
-    args = parser.parse_args()
 
+    # parse the command-line arguments and start timing the script
+    args = parser.parse_args()
     start = time.time()
 
     # read in the pointing information
-    pointing_dict = read_sro_centers('data/sro_apass_centers.txt')
+    pointing_dict = read_sro_centers('../data/sro_apass_centers.txt')
 
     # read in the data and overlaping node graph data structure
     data, G = read_data(args.input)
     # enable to see the graph corresponding to the linkages between fields
     #nx.draw_networkx(G)
     #plt.show()
+
+    # determine the save directory for output files
+    save_dir = os.path.dirname(os.path.realpath(args.input[0])) + "/"
 
     # Create a vertex that we can use to quickly look up all fields
     # belonging to a given field_base_id. Insert edges to link it all
@@ -237,9 +215,13 @@ def main():
         fig_residuals_out = dict(x=list(), y=list())
         fig_uncertainty_vs_mag = dict(x=list(), y=list())
 
+        # construct the field name
         field_name = get_field_name(field_base_id)
+
+        # Find neighbors
         neighbors = nx.all_neighbors(G, field_name)
         sub_G = G.subgraph(neighbors)
+
         # enable to see the graph
         plt.figure(num=None, figsize=(15,15))
         fig_graph_id = plt.gcf().number
@@ -247,11 +229,16 @@ def main():
         nx.draw_networkx(sub_G, pos=pos)
         labels = nx.get_edge_attributes(sub_G,'weight')
         nx.draw_networkx_edge_labels(sub_G, pos, edge_labels=labels)
-        plt.savefig(apass_save_dir + str(field_base_id) + "-graph.png")
+        plt.savefig(save_dir + str(field_base_id) + "-graph.png")
 
         # find the node with the most edges and start there
         edges = sub_G.edges(data=True)
         edges = sorted(edges, key=lambda x: x[2]['weight'], reverse=True)
+
+        if len(edges) == 0:
+            print "WARNING: There are no overlapping nodes, skipping."
+            continue
+
         start_node_id = edges[0][0]
         adj_node_id = edges[0][1]
 
@@ -274,21 +261,21 @@ def main():
         x = fig_residuals_out['x']
         y = fig_residuals_out['y']
         plot_info = scatter_histogram(x,y)
-        plt.savefig(apass_save_dir + str(field_base_id) + "-residuals_out.png")
+        plt.savefig(save_dir + str(field_base_id) + "-residuals_out.png")
 
         plt.figure()
         plt.suptitle("Input properties for field %i" % (field_base_id))
         x = fig_residuals_in['x']
         y = fig_residuals_in['y']
         scatter_histogram(x,y, hist_y_max=plot_info['hist_y_max'])
-        plt.savefig(apass_save_dir + str(field_base_id) + "-residuals_in.png")
+        plt.savefig(save_dir + str(field_base_id) + "-residuals_in.png")
 
         plt.figure()
         plt.suptitle("Uncertainty vs. magnitude for field %i" % (field_base_id))
         x = fig_uncertainty_vs_mag['x']
         y = fig_uncertainty_vs_mag['y']
         scatter_histogram(x,y, ylim=(-0.5,3), ylabel="Uncertainty (mag)")
-        plt.savefig(apass_save_dir + str(field_base_id) + "-uncertainty-vs-magnitude.png")
+        plt.savefig(save_dir + str(field_base_id) + "-uncertainty-vs-magnitude.png")
 
         # verify that everyone was merged in
         for node_id in sub_G.nodes():
@@ -298,11 +285,12 @@ def main():
         # save data specific to this field
         indexes = np.in1d(data['field_id'], sub_G.nodes())
         t_data = data[indexes]
-        filename = apass_save_dir + '/p%i.dat' % (field_base_id)
-        write_sro_dat(filename, t_data)
+        filename = save_dir + '/p%i.dat' % (field_base_id)
+        dat.write_dat(filename, t_data, dat_type="sro")
 
-    # save data to all fields
-    write_sro_dat(apass_save_dir + '/pALL.dat', data)
+    # print timing statistics
+    end = time.time()
+    print("Time elapsed: %is" % (int(end - start)))
 
 
 def merge_by_greatest_weight(node_id_i, data, G):
@@ -412,6 +400,7 @@ def merge_by_wavefront(data, wavefront, G):
     merge_by_wavefront(data, wavefront, G)
 
 def merge_pointings(data, field_i, neighbors, G):
+    """Merges the data from field_i into the reference frame of the neighbors"""
 
     global fig_residuals_in
     global fig_residuals_out
@@ -428,8 +417,18 @@ def merge_pointings(data, field_i, neighbors, G):
     for neighbor in neighbors:
         neighbor_data = G.node[neighbor]
         if neighbor_data['merged'] == True:
-            edge_data = G.get_edge_data(field_i, neighbor)
-            data_row_pairs.extend(edge_data['line_ids'])
+            # get edges neighbor -> field_i
+            edge_data = G.get_edge_data(neighbor, field_i)
+            for src,dst in edge_data['line_ids']:
+                # BUGFIX: Sometimes the line data will have field_i -> neighbor values.
+                # The order is important as we perform a linear least squares fit to put
+                # field_i into the frame of the neighbors below. Fix this by reversing
+                # the order if the direction is backwards
+                if data[dst]['field_id'] != field_i:
+                    data_row_pairs.append([dst,src])
+                else:
+                    data_row_pairs.append([src,dst])
+            #data_row_pairs.extend(edge_data['line_ids'])
 
     # select the data from field_i
     indexes = np.where(data['field_id'] == field_i)
@@ -437,7 +436,7 @@ def merge_pointings(data, field_i, neighbors, G):
 
     # Extract the indices for overlapping
     i,j = map(list, zip(*data_row_pairs))
-    for filter_id in sro_filter_names:
+    for filter_id in dat.sro_phot_names:
 
         # Extract all valid data
         x, y, x_sig, y_sig = get_good_data(data, i, j, filter_id)
@@ -445,15 +444,24 @@ def merge_pointings(data, field_i, neighbors, G):
         # Use stars brighter than MAX_MERGE_MAG to determine the deltas between
         # fields
         fit_indexes = np.where((x <= MAX_MERGE_MAG) & (y <= MAX_MERGE_MAG))
-        x_t = x[fit_indexes]
+        x_t     = x[fit_indexes]
         x_sig_t = x_sig[fit_indexes]
-        y_t = y[fit_indexes]
+        y_t     = y[fit_indexes]
         y_sig_t = y_sig[fit_indexes]
 
+        # run the fit once to find residuals, trim off any values more than
+        # five sigma
+        resid = delta_mag_func([0.0], x_t, y_t, x_sig_t, y_sig_t)
+        fit_indexes = np.where((resid < 5.0))
+        x_t     = x_t[fit_indexes]
+        x_sig_t = x_sig_t[fit_indexes]
+        y_t     = y_t[fit_indexes]
+        y_sig_t = y_sig_t[fit_indexes]
+
         # run a least-squares fit between the two fields
-        params = [0]
-        results = least_squares(delta_mag_func, params, args=(x_t, y_t, x_sig_t, y_sig_t))
-        params = results.x
+        params  = [0]
+        results = least_squares(delta_mag_func, params, args =(x_t, y_t, x_sig_t, y_sig_t))
+        params  = results.x
 
         print "  %3s delta: %+f, num: %i" % (filter_id, params[0], len(x_t))
 
@@ -461,7 +469,7 @@ def merge_pointings(data, field_i, neighbors, G):
         # out of the array, apply the delta, and copy them back.
         good_value_indexes = np.where(merge_field_data[filter_id] <= BAD_MAG_VALUE)
         good_rows = merge_field_data[good_value_indexes]
-        good_rows[filter_id] += params[0]
+        good_rows[filter_id] -= params[0]
         merge_field_data[good_value_indexes] = good_rows
 
         # don't include B-V in plots
@@ -508,12 +516,12 @@ def read_data(filenames):
     G = nx.Graph()
     num_rows = 0
     for filename in filenames:
-        print "Reading %s" % (filename)
-
         base_filename = os.path.splitext(filename)[0]
+        print "Reading %s" % (base_filename)
+
 
         # read in the data and append it to the data list.
-        t_data = read_sro_dat_file(filename)
+        t_data = dat.read_dat(filename, dat_type="sro")
         data.extend(t_data.tolist())
 
         # read in the NetworkX graph. It is formatted as follows:
@@ -543,8 +551,7 @@ def read_data(filenames):
     print "Nodes: %i" % (len(G.nodes()))
     print "Edges: %i" % (len(G.edges()))
 
-    # convert back to a numpy array to make the rest of the logic easier to implement
-    data = np.asarray(data, dtype={'names': sro_col_names, 'formats': sro_col_types})
+    data = dat.list_to_ndarray(data, dat_type="sro")
 
     return data, G
 
@@ -570,10 +577,6 @@ def merge_graphs(G, t_G):
         G_edge = G[t_src][t_dst]
         G_edge['weight'] += t_data['weight']
         G_edge['line_ids'].extend(t_data['line_ids'])
-
-def write_sro_dat(filename, data):
-    print "Saving %s" % (filename)
-    np.savetxt(filename, data, fmt=sro_col_formats)
 
 def get_good_data(data, i, j, filter_id):
 
