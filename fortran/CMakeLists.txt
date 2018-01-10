@@ -20,6 +20,8 @@ add_executable(filepp filepp.f)
 target_link_libraries(filstat aah)
 
 add_executable(compare_apass compare_apass.f)
+add_executable(build_raster build_raster.f)
+add_executable(residual5 residual5.f)
 
 add_executable(filextr filextr.f)
 add_executable(filtag filtag.f)
@@ -50,6 +52,10 @@ set(SLA_LIBRARIES  "sla_f.a"   CACHE FILEPATH "libsla_f.a")
 
 add_executable(filtran filtran.f)
 target_link_libraries(filtran aah ${PLOTSUB_LIBRARIES} ${DEVICES_LIBRARIES}
+  ${UTILS_LIBRARIES} ${SLA_LIBRARIES} ${X11_LIBRARIES})
+
+add_executable(filtran2 filtran2.f)
+target_link_libraries(filtran2 aah ${PLOTSUB_LIBRARIES} ${DEVICES_LIBRARIES}
   ${UTILS_LIBRARIES} ${SLA_LIBRARIES} ${X11_LIBRARIES})
 
 add_executable(filplot filplot.f)
