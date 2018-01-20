@@ -96,8 +96,14 @@ def write_dat(filename, data, dat_type="apass"):
     data['container_height'] *= (3600)
     data['container_area']   *= (3600 * 3600)
 
+    # compose a header
+    header =  "# APASS .dat file output. Format is as follows: \n"
+    header += "# Column names: " + ','.join(dat_col_names) + "\n"
+    header += "# Column types: " + ','.join(dat_col_types) + "\n"
+    header += "# Column formats: " + ','.join(dat_col_fmt) + "\n"
+
     # save to text
-    np.savetxt(filename, data, fmt=dat_col_fmt)
+    np.savetxt(filename, data, fmt=dat_col_fmt, header=header)
 
 def dicts_to_ndarray(dicts, dat_type="apass"):
     """Converts a dictionary to a structured numpy array in a .dat-friendly format"""
