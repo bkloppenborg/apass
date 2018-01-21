@@ -41,7 +41,7 @@ def get_active_indices(i, j, stride):
     return output
 
 
-def get_adjacent_zones(i, j):
+def get_adjacent_zone_ids(i, j):
     """Returns zones that should be regarded as adjacent to the specified zone.
 
     This function behaves as follows:
@@ -95,13 +95,13 @@ def get_adjacent_zones(i, j):
     #print "Adjacent zones: "
     #print adj_zone_indices
 
-    adj_zones = []
+    adj_zone_ids = []
     for k,l in adj_zone_indices:
-        adj_zone = get_zone_from_indices(k, l)
-        adj_zones.append(adj_zone)
-    return adj_zones
+        adj_zone_id = get_zone_id_from_indices(k, l)
+        adj_zone_ids.append(adj_zone_id)
+    return adj_zone_ids
 
-def get_zone_from_indices(i,j):
+def get_zone_id_from_indices(i,j):
     """Returns a reference to the zone in the global tree given
     the (i,j) indices of the zone in the tree.
 
@@ -122,30 +122,58 @@ def get_zone_from_indices(i,j):
 
     #print i, j, x, y
 
-    return get_zone_from_coordinates(x,y)
+    return get_zone_id_from_coordinates(x,y)
 
-def get_zone_from_coordinates(x,y):
+def get_zone_id_from_coordinates(x,y):
     """Returns a reference to a zone in the global tree given the specified
     (x,y) coordinates.
 
     Requires the global_tree is loaded into the global namespace."""
     global global_tree
-    return global_tree.find_leaf(x,y)
+    leaf = global_tree.find_leaf(x,y)
+    return leaf.node_id
 
+def lookup_zone_ids(save_dir, zone_position):
 
-def fix_zone_overlaps(save_dir, zone_index):
-    """Fixes zone overlaps between adjacent nodes.
+    # Get this zone and its ID
+    i,j = zone_position
+    zone_id      = get_zone_id_from_indices(i,j)
+    adj_zone_ids = get_adjacent_zone_ids(i, j)
 
-    Requires global_tree_filename is loaded into the global namespace."""
+    return zone_id, adj_zone_ids
+
+def fix_overlaps_from_positions(save_dir, zone_position):
+    """Wrapper to fix_overlaps when only the (i,j) position of the zone is known.
+
+    save_dir - the directory containing zone files
+    zone_position - a (i,j) integer tuple indicating the location of the primary
+                    zone within the over-all problem space
+    """
 
     # load the global tree
     global global_tree
     global_tree = QuadTreeNode.from_file(global_tree_filename, leafClass=IDLeaf)
 
-    # Get this zone and its ID
-    i,j = zone_index
-    zone_id = get_zone_from_indices(i,j).node_id
+    zone_id, adjacent_zone_ids = lookup_zone_ids(save_dir, zone_position)
+
+    fix_overlaps(save_dir, zone_id, adjacent_zone_ids)
+
+def fix_overlaps(save_dir, zone_id, adjacent_zone_ids):
+    """Fixes overlapping containers between adjacent zones.
+    NOTE: Requires global_tree_filename to be loaded into the global namespace!
+
+    save_dir - the directory containing zone files
+    zone_id - ID (int) of primary zone of interest for overlap detection
+    adjacent_zone_ids - IDs (list[int]) of adjacent zones
+    """
+
+    if zone_id == 3351:
+        print adjacent_zone_ids
+
     print("Processing Zone: %i" % (zone_id))
+
+    global global_tree
+    global_tree = QuadTreeNode.from_file(global_tree_filename, leafClass=IDLeaf)
 
     # Load the zone
     zone_dict = load_zone(save_dir, zone_id)
@@ -162,9 +190,8 @@ def fix_zone_overlaps(save_dir, zone_index):
     # (attempt to) load adjacent zone data.
     # If this fails adj_zones[id]['loaded'] will be false
     adj_zone_dicts = dict()
-    for adj_zone in get_adjacent_zones(i, j):
-        z_id = adj_zone.node_id
-        adj_zone_dicts[z_id] = load_zone(save_dir, z_id)
+    for adj_zone_id in adjacent_zone_ids:
+        adj_zone_dicts[adj_zone_id] = load_zone(save_dir, adj_zone_id)
 
     # iterate over this zone's border rectangles and merge overlapping entries
     for key, info in border_infos.iteritems():
@@ -205,7 +232,7 @@ def fix_zone_overlaps(save_dir, zone_index):
 
             # find the adjacent node and any adjacent containers
             adj_node = adj_tree.find_leaf(c_x, c_y)
-            adj_containers = adj_node.get_overlapping_containers(container, remove=False)
+            adj_containers = adj_node.get_overlapping_containers(container)
 
             # move the adjacent container's data into this container
             for adj_container in adj_containers:
@@ -244,6 +271,8 @@ def main():
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
+    parser.add_argument('--zone', type=int, nargs='+',
+                        help="Zone IDs for primary and ajacent zones to inspect.")
     parser.set_defaults(jobs=1)
 
     # parse the command line arguments and start timing the script
@@ -258,6 +287,17 @@ def main():
     global height
     width = 2**(apass.global_depth)
     height = width
+
+    # If requested, process a single zone
+    if args.zone:
+        if len(args.zone) == 1:
+            print("You must specify a zone and at least one adjacent zone")
+            exit()
+
+        zone_id = args.zone[0]
+        adjacent_zone_ids = args.zone[1:]
+        fix_overlaps(args.save_dir, zone_id, adjacent_zone_ids)
+        exit()
 
     print("Image size: %i %i" % (width, height))
 
@@ -332,7 +372,7 @@ def process_indices(zone_indices, args):
     pool = Pool(args.jobs)
 
     # create a partial to store the save directory
-    fzo_func = partial(fix_zone_overlaps, args.save_dir)
+    fzo_func = partial(fix_overlaps_from_positions, args.save_dir)
 
     if args.debug:
         for zone_index in zone_indices:
