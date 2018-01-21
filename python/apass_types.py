@@ -93,6 +93,9 @@ class RectContainer(dict):
             return
 
         for datum in self.data:
+            datum['zone_id'] = self.zone_id
+            datum['node_id'] = self.node_id
+            datum['container_id'] = self.container_id
             filehandle.write(datum)
         self.data = []
 
@@ -144,9 +147,12 @@ class RectLeaf(QuadTreeNode):
 
         return containers
 
+    def remove_container(self, container):
+        self.containers.remove(container)
+
     def remove_containers(self, containers):
         for container in containers:
-            self.containers.remove(container)
+            self.remove_container(container)
 
     def insert(self, x, y, data):
         """Stores the data inside of a container encapsulated by this node."""
@@ -214,5 +220,13 @@ class RectLeaf(QuadTreeNode):
 
     def save_data(self, filehandle):
         """Saves the data in this node to the file handle savefile"""
-        for container in self.containers:
+
+        for i in range(0, len(self.containers)):
+            container = self.containers[i]
+            # update the identifiers
+            container.zone_id = self.zone_id
+            container.node_id = self.node_id
+            container.container_id = i
+
             container.save_data(filehandle)
+

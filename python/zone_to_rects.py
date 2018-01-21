@@ -119,6 +119,7 @@ def merge_containers_on_borders(nodes):
     zone_border_rects = dict()
     for node in nodes:
 
+        # Non-rectleaf nodes do not have data, skip them.
         if not isinstance(node, RectLeaf):
             continue
 
@@ -127,21 +128,25 @@ def merge_containers_on_borders(nodes):
             rect = container.rect
 
             # Get a unique list of nodes containing the corners of the rectangle
-            # excluding this node. These will be of the type RectLeaf.
-            other_nodes = get_containing_nodes(node, rect)
-            other_nodes.remove(node)
+            # excluding this node. These other nodes will be of type RectLeaf
+            adj_nodes = get_containing_nodes(node, rect)
+            adj_nodes.remove(node)
 
             # iterate through the list of other nodes and attempt to merge
             # containers
-            for other_node in other_nodes:
-                if other_node is None:
+            for adj_node in adj_nodes:
+                if adj_node is None:
+                    # There is no adjacent node, this must be on the edge of the zone
+                    # Make a border_info entry
                     info = make_border_info(container)
                     zone_border_rects.update(info)
                 else:
-                    other_containers = other_node.get_overlapping_containers(container)
-                    other_node.remove_containers(other_containers)
-                    for other in other_containers:
-                        container.merge(other)
+                    # find adjacent containers
+                    adj_containers = adj_node.get_overlapping_containers(container)
+                    # move their data into this container
+                    for adj_container in adj_containers:
+                        container.merge(adj_container)
+                        adj_node.remove_container(adj_container)
 
     return zone_border_rects
 

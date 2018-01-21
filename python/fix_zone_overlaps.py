@@ -152,6 +152,7 @@ def fix_overlaps_from_positions(save_dir, zone_position):
 
     # load the global tree
     global global_tree
+    global_tree_filename = save_dir + "/global.json"
     global_tree = QuadTreeNode.from_file(global_tree_filename, leafClass=IDLeaf)
 
     zone_id, adjacent_zone_ids = lookup_zone_ids(save_dir, zone_position)
@@ -167,12 +168,10 @@ def fix_overlaps(save_dir, zone_id, adjacent_zone_ids):
     adjacent_zone_ids - IDs (list[int]) of adjacent zones
     """
 
-    if zone_id == 3351:
-        print adjacent_zone_ids
-
     print("Processing Zone: %i" % (zone_id))
 
     global global_tree
+    global_tree_filename = save_dir + "/global.json"
     global_tree = QuadTreeNode.from_file(global_tree_filename, leafClass=IDLeaf)
 
     # Load the zone
@@ -241,7 +240,8 @@ def fix_overlaps(save_dir, zone_id, adjacent_zone_ids):
                                             adj_container.node_id,
                                             adj_container.container_id)
                 print(" merging %s into %s" % (src_name, dest_name))
-                container.merge(adj_container, mark_moved=True)
+                container.merge(adj_container)
+                adj_node.remove_container(adj_container)
 
                 # remove the adjacent container from the border info file
                 if src_name in adj_border_infos.keys():
@@ -279,8 +279,6 @@ def main():
     args = parser.parse_args()
     start = time.time()
 
-    global global_tree_filename
-    global_tree_filename = args.save_dir + "/global.json"
 
     # determine the size of the image
     global width
@@ -292,12 +290,12 @@ def main():
     if args.zone:
         if len(args.zone) == 1:
             print("You must specify a zone and at least one adjacent zone")
-            exit()
+            return
 
         zone_id = args.zone[0]
         adjacent_zone_ids = args.zone[1:]
         fix_overlaps(args.save_dir, zone_id, adjacent_zone_ids)
-        exit()
+        return
 
     print("Image size: %i %i" % (width, height))
 

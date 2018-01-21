@@ -57,7 +57,7 @@ def save_zone_data(tree, directory):
     filename = directory + '/' + apass.name_zone_container_file(zone_id)
 
     # save the rectangle data to file, overwriting the contents
-    with open(filename, 'a+b') as data_file:
+    with open(filename, 'w+b') as data_file:
         for leaf in leaves:
             leaf.save_data(data_file)
 
