@@ -46,13 +46,13 @@ def main():
         print "Plotting zone " + zone_name
 
         # load the original zone data. Note, we don't restore it to the tree
-        zone_datafile = save_dir + apass.name_zone_file(zone_id)
-        zone_data = fred.read_fredbin(zone_datafile)
+        zone_data_file = save_dir + apass.name_zone_file(zone_id)
+        zone_data = fred.read_fredbin(zone_data_file)
         print("Zone file has " + str(zone_data.size) + " entries")
 
         # load the containerized zone data
-        zone_containerfile = save_dir + apass.name_zone_container_file(zone_id)
-        zone_container_data = fred.read_fredbin(zone_datafile)
+        zone_container_file = save_dir + apass.name_zone_container_file(zone_id)
+        zone_container_data = fred.read_fredbin(zone_container_file)
         print("Zone container file has " + str(zone_container_data.size) + " entries")
 
         # load the zone's tree
@@ -86,9 +86,9 @@ def main():
         ra  = zone_data['ra']
         plt.scatter(ra, dec)
 
-        #dec = zone_container_data['dec']
-        #ra  = zone_container_data['ra'] * np.cos(dec * pi/180)
-        #plt.scatter(ra, dec)
+        dec = zone_container_data['dec']
+        ra  = zone_container_data['ra']
+        plt.scatter(ra, dec, color="green")
 
         plt.show()
 
