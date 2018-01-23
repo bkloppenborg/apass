@@ -14,10 +14,6 @@ class RectContainer(dict):
         self.zone_id = zone_id
         self.node_id = node_id
         self.container_id = container_id
-        self.moved = False
-        self.moved_zone_id = -1
-        self.moved_node_id = -1
-        self.moved_container_id = -1
         self.num_data = 0
 
         dr = 1. / (60 * 60) # 1 arcsecond in degrees
@@ -44,10 +40,6 @@ class RectContainer(dict):
         container = RectContainer(0, 0, None,
                                   zone_id = zone_id, node_id = node_id, container_id = container_id)
 
-        container.moved = dict_['moved']
-        container.moved_zone_id = dict_['moved_zone_id']
-        container.moved_node_id = dict_['moved_node_id']
-        container.moved_container_id = dict_['moved_container_id']
         container.num_data = dict_['num_data']
         container.rect = Rect.from_dict(dict_['rect'])
         return container
@@ -57,26 +49,20 @@ class RectContainer(dict):
         self.data.append(data)
         self.num_data = len(self.data)
 
-    def merge(self, other, mark_moved=False):
+    def merge(self, other):
         """Merges two RectContainer Instances, growing their bounding rectangles
         other -- another RectContainer instance"""
 
-        # grow the border:
+        # grow the rectangle
         self.rect.expand(other.rect)
 
         # re-number the other container's data IDs and append it to this node's data
         for i in range(0, len(other.data)):
             other.data[i]['node_id'] = self.node_id
             other.data[i]['container_id'] = self.container_id
+
         self.data.extend(other.data)
         other.data = []
-
-        # mark the other container's data as moved to this container
-        if mark_moved:
-            other.moved = True
-            other.moved_zone_id = self.zone_id
-            other.moved_node_id = self.node_id
-            other.moved_container_id = self.container_id
 
         self.num_data = len(self.data)
 
@@ -84,6 +70,8 @@ class RectContainer(dict):
         """Determines if this RectContainer overlaps with another RectContainer
 
         other -- another RectContainer instance"""
+
+        # Ensure all rectangle comparisons happen within the 0 >= x, -90 >= y region
         return self.rect.overlaps(other.rect)
 
     def save_data(self, filehandle):

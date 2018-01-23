@@ -83,3 +83,13 @@ def get_pair(list_object):
     y = float(list_object.pop(0))
     return (x,y)
 
+
+def wrap_bounds(ra, dec):
+    """Wraps (ra,dec) coordinates at boundaries."""
+    if dec < -90 or dec > 90:
+        ra = (ra + 180) % 360
+        dec = 90 - (dec + 90) % 180
+    elif ra < 0 or ra > 360:
+        ra = (ra + 360) % 360
+
+    return ra, dec

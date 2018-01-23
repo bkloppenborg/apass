@@ -122,7 +122,8 @@ def get_zone_id_from_indices(i,j):
 
     #print i, j, x, y
 
-    return get_zone_id_from_coordinates(x,y)
+    zone_id = get_zone_id_from_coordinates(x,y)
+    return zone_id
 
 def get_zone_id_from_coordinates(x,y):
     """Returns a reference to a zone in the global tree given the specified
@@ -212,7 +213,7 @@ def fix_overlaps(save_dir, zone_id, adjacent_zone_ids):
 
         # find adjacent nodes which overlap with this container
         for c_x, c_y in corners:
-            c_x, c_y = wrap_bounds(c_x, c_y)
+            c_x, c_y = apass.wrap_bounds(c_x, c_y)
 
             adj_zone = global_tree.find_leaf(c_x, c_y)
             adj_zone_id = adj_zone.node_id
@@ -222,6 +223,8 @@ def fix_overlaps(save_dir, zone_id, adjacent_zone_ids):
                 continue
 
             # skip zones that didn't load
+            if adj_zone_id not in adj_zone_dicts:
+                continue
             if adj_zone_dicts[adj_zone_id]['loaded'] == False:
                 continue
 
@@ -252,16 +255,6 @@ def fix_overlaps(save_dir, zone_id, adjacent_zone_ids):
     save_zone(save_dir, zone_dict)
     for key, value in adj_zone_dicts.iteritems():
         save_zone(save_dir, value)
-
-def wrap_bounds(ra, dec):
-    """Wraps (ra,dec) coordinates at boundaries."""
-    if dec < -90 or dec > 90:
-        ra = (ra + 180) % 360
-        dec = 90 - (dec + 90) % 180
-    elif ra < 0 or ra > 360:
-        ra = (ra + 360) % 360
-
-    return ra, dec
 
 
 def main():
