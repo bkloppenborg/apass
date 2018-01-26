@@ -96,6 +96,9 @@ def write_dat(filename, data, dat_type="apass"):
     data['container_height'] *= (3600)
     data['container_area']   *= (3600 * 3600)
 
+    # write data out in the [0,360] range
+    data['ra'] %= 360.0
+
     # compose a header
     header =  "# APASS .dat file output. Format is as follows: \n"
     header += "# Column names: " + ','.join(dat_col_names) + "\n"
