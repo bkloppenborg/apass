@@ -33,8 +33,14 @@ END=$(date +%s)
 DIFF=$(( $END - $START ))
 echo "Pipeline took $DIFF seconds"
 
+read -p "Press enter see four-corner plots"
+
 # plot the four zones
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z03351.fredbin --show-containers &
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z03394.fredbin --show-containers &
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z01985.fredbin --show-containers &
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z02028.fredbin --show-containers &
+
+read -p "Press enter see 0 <-> 360 plots"
+python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z02050.fredbin --show-containers &
+python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z03415.fredbin --show-containers &

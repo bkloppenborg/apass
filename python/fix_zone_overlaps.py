@@ -279,6 +279,10 @@ def main():
     width = 2**(apass.global_depth)
     height = width
 
+    # move data that sticks out past the left to the right
+    # TODO: Run this in parallel
+    move_zero_edge_data(args.save_dir)
+
     # If requested, process a single zone
     if args.zone:
         if len(args.zone) == 1:
@@ -356,6 +360,25 @@ def main():
     end = time.time()
     print("Time elapsed: %is" % (int(end - start)))
 
+def move_zero_edge_data(save_dir):
+    """Moves any data whose containers have an edge with ra < 0 +360 degrees away"""
+    global global_tree
+    global_tree_filename = save_dir + "/global.json"
+    global_tree = QuadTreeNode.from_file(global_tree_filename, leafClass=IDLeaf)
+
+    global height
+
+    print("Processing zones on RA = 0 edge")
+
+    # first move data near RA ~ 0 to RA 360+
+    for j in range(1, height - 2):
+        # get the left and right edge zones
+        zone_id = get_zone_id_from_indices(0, j)
+        adj_zone_id = get_zone_id_from_indices(width-1, j)
+
+        # run the fix-overlaps function, but flip the order of the zones
+        # to ensure data gets moved from zone_id to adj_zone_id
+        fix_overlaps(save_dir, adj_zone_id, [zone_id])
 
 def process_indices(zone_indices, args):
 

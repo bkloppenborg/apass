@@ -53,6 +53,15 @@ class RectContainer(dict):
         """Merges two RectContainer Instances, growing their bounding rectangles
         other -- another RectContainer instance"""
 
+        # Containers storing data that might be at ra < 0 should be reflected
+        # to ra += 360 degrees.
+        if other.rect.x_min < 0:
+            other.rect.x_min += 360.0
+            other.rect.x_max += 360.0
+
+            for i in range(0, len(other.data)):
+                other.data[i]['ra'] += 360.0
+
         # grow the rectangle
         self.rect.expand(other.rect)
 
@@ -70,9 +79,16 @@ class RectContainer(dict):
         """Determines if this RectContainer overlaps with another RectContainer
 
         other -- another RectContainer instance"""
+        s_rect = self.rect
+        o_rect = other.rect
 
-        # Ensure all rectangle comparisons happen within the 0 >= x, -90 >= y region
-        return self.rect.overlaps(other.rect)
+        # ensure both rectangles are in the [0-360) range
+        if s_rect.x_min < 0:
+            s_rect = Rect(s_rect.x_min + 360.0, s_rect.x_max + 360.0, s_rect.y_min, s_rect.y_max)
+        if o_rect.x_min < 0:
+            o_rect = Rect(o_rect.x_min + 360.0, o_rect.x_max + 360.0, o_rect.y_min, o_rect.y_max)
+
+        return s_rect.overlaps(o_rect)
 
     def save_data(self, filehandle):
         """Writes this container's data to the specified filehandle"""
