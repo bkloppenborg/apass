@@ -25,6 +25,14 @@ class RectContainer(dict):
         if data is not None:
             self.append_data(data)
 
+    def __repr__(self):
+        """Return a string representation of this object"""
+        str_repr = "Zone: %i Node: %i ID: %i, NumData: %i Bounds: [%f %f %f %f]" % (
+            self.zone_id, self.node_id, self.container_id, num_data,
+            self.rect.x_min, self.rect.x_max, self.rect.y_min, self.rect.y_max)
+
+        return str_repr
+
     def contains(self, x, y):
         """Determines if the point (x,y) is contained within this container's bounds"""
         return self.rect.contains(x,y)
@@ -53,24 +61,18 @@ class RectContainer(dict):
         """Merges two RectContainer Instances, growing their bounding rectangles
         other -- another RectContainer instance"""
 
-        # Containers storing data that might be at ra < 0 should be reflected
-        # to ra += 360 degrees.
-        if other.rect.x_min < 0:
-            other.rect.x_min += 360.0
-            other.rect.x_max += 360.0
-
-            for i in range(0, len(other.data)):
-                other.data[i]['ra'] += 360.0
+        # conditionally reflect the data about RA 0 <-> 360
+        rect, data = apass.reflect_rect_and_data(other.rect, other.data)
 
         # grow the rectangle
-        self.rect.expand(other.rect)
+        self.rect.expand(rect)
 
         # re-number the other container's data IDs and append it to this node's data
-        for i in range(0, len(other.data)):
-            other.data[i]['node_id'] = self.node_id
-            other.data[i]['container_id'] = self.container_id
+        for i in range(0, len(data)):
+            data[i]['node_id'] = self.node_id
+            data[i]['container_id'] = self.container_id
 
-        self.data.extend(other.data)
+        self.data.extend(data)
         other.data = []
 
         self.num_data = len(self.data)
@@ -79,16 +81,19 @@ class RectContainer(dict):
         """Determines if this RectContainer overlaps with another RectContainer
 
         other -- another RectContainer instance"""
-        s_rect = self.rect
-        o_rect = other.rect
+        overlaps = False
 
-        # ensure both rectangles are in the [0-360) range
-        if s_rect.x_min < 0:
-            s_rect = Rect(s_rect.x_min + 360.0, s_rect.x_max + 360.0, s_rect.y_min, s_rect.y_max)
-        if o_rect.x_min < 0:
-            o_rect = Rect(o_rect.x_min + 360.0, o_rect.x_max + 360.0, o_rect.y_min, o_rect.y_max)
+        # If both nodes span the north or south pole, they automatically overlap
+        if self.rect.y_max > 90 and other.rect.y_max > 90:
+            overlaps = True
+        elif self.rect.y_min < -90 and other.rect.y_min < -90:
+            overlaps = True
+        else:
+            s_rect = apass.reflect_rect(self.rect)
+            o_rect = apass.reflect_rect(other.rect)
+            overlaps = s_rect.overlaps(o_rect)
 
-        return s_rect.overlaps(o_rect)
+        return overlaps
 
     def save_data(self, filehandle):
         """Writes this container's data to the specified filehandle"""

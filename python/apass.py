@@ -6,6 +6,7 @@ from numpy import cos
 from math import pi
 import re
 import json
+from quadtree import Rect
 
 # global configuration settings for the APASS Project
 ccd_radius = 2500
@@ -93,3 +94,32 @@ def wrap_bounds(ra, dec):
         ra = (ra + 360) % 360
 
     return ra, dec
+
+def reflect_rect(rect):
+    """Conditionally reflects the rectangle about the following lines:
+    * RA 0 <-> 360 boundary"""
+
+    x_min = rect.x_min
+    x_max = rect.x_max
+    y_min = rect.y_min
+    y_max = rect.y_max
+
+    # rectangles on the 0 <-> 360 line
+    if x_min < 0:
+        x_min += 360.0
+        x_max += 360.0
+
+    return Rect(x_min, x_max, y_min, y_max)
+
+def reflect_rect_and_data(rect, data):
+    """Conditionally reflects the rectangle and data bout the following lines:
+    * RA 0 <-> 360 boundary"""
+
+    # rectangles on the 0 <-> 360 line
+    if rect.x_min < 0:
+        for datum in data:
+            datum['ra'] += 360.0
+
+    rect = reflect_rect(rect)
+
+    return [rect, data]

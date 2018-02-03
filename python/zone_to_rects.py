@@ -66,8 +66,7 @@ def zone_to_rects(save_dir, filename):
     # now number the (leaf) nodes
     number_containers(zone_tree, zone_id=zone_id)
     #plot_rects(zone_tree) # plot the nodes before the merge
-    leaves = zone_tree.get_leaves()
-    zone_border_info = merge_containers_on_borders(leaves)
+    zone_border_info = merge_containers_on_borders(zone_tree)
     #plot_rects(zone_tree) # plot the nodes after the merge
 
     # write out the containers that were on the border
@@ -78,6 +77,61 @@ def zone_to_rects(save_dir, filename):
 
     # save the zone -> container mapping
     QuadTreeNode.to_file(zone_tree, filename_no_ext + "-zone.json")
+
+def merge_containers_on_borders(zone_tree):
+
+    zone_border_rects = dict()
+
+    leaves = zone_tree.get_leaves() # these are of type RectLeaf
+    for leaf in leaves:
+
+        #  iterate over every RectContainer instance in the RectLeaf
+        for container in leaf.containers:
+
+            # get a unique list of nodes containing the corners
+            # of this container. The polar zones return all other
+            # polar zones so that we can collapse the data into
+            # a single RectContainer instance
+            adj_leaves = []
+            if container.rect.y_min < -90:
+                adj_leaves = get_polar_leaves(zone_tree, -90)
+            elif container.rect.y_max > 90:
+                adj_leaves = get_polar_leaves(zone_tree, 90)
+            else:
+                adj_leaves = get_containing_nodes(leaf, container)
+
+            # remove self references
+            adj_leaves.remove(leaf)
+
+            for adj_leaf in adj_leaves:
+                if adj_leaf is None:
+                    # if there is no adjacent leaf, then we are at a zone border.
+                    # make an entry in the zone_border_rects
+                    info = make_border_info(container)
+                    zone_border_rects.update(info)
+                else:
+                    # get the overlapping containers
+                    adj_containers = adj_leaf.get_overlapping_containers(container)
+                    # move their data
+                    for adj_container in adj_containers:
+                        container.merge(adj_container)
+                        adj_leaf.remove_container(adj_container)
+
+    return zone_border_rects
+
+def get_polar_leaves(zone_tree, y_val):
+    """Finds and returns RectLeaf nodes within the tree
+    located at the poles.
+    NOTE: Specify y_val as +90 or -90"""
+
+    polar_leaves = []
+
+    leaves = zone_tree.get_leaves()
+    for leaf in leaves:
+        if leaf.rect.y_min <= y_val or leaf.rect.y_max >= y_val:
+            polar_leaves.append(leaf)
+
+    return polar_leaves
 
 def number_containers(tree, zone_id=0):
     """Assigns a unique ID to each container."""
@@ -111,53 +165,16 @@ def number_containers(tree, zone_id=0):
         # increment the node ID
         node_id += 1
 
-def merge_containers_on_borders(nodes):
-    """This function merges containers that reside on the border of cells.
-    Any container that resides on the border of the zone will be returned
-    as a border_info dict made by apass.make_border_info(...)"""
 
-    zone_border_rects = dict()
-    for node in nodes:
-
-        # Non-rectleaf nodes do not have data, skip them.
-        if not isinstance(node, RectLeaf):
-            continue
-
-        # iterate over every RectContainer in the RectLeaf node
-        for container in node.containers:
-            rect = container.rect
-
-            # Get a unique list of nodes containing the corners of the rectangle
-            # excluding this node. These other nodes will be of type RectLeaf
-            adj_nodes = get_containing_nodes(node, rect)
-            adj_nodes.remove(node)
-
-            # iterate through the list of other nodes and attempt to merge
-            # containers
-            for adj_node in adj_nodes:
-                if adj_node is None:
-                    # There is no adjacent node, this must be on the edge of the zone
-                    # Make a border_info entry
-                    info = make_border_info(container)
-                    zone_border_rects.update(info)
-                else:
-                    # find adjacent containers
-                    adj_containers = adj_node.get_overlapping_containers(container)
-                    # move their data into this container
-                    for adj_container in adj_containers:
-                        container.merge(adj_container)
-                        adj_node.remove_container(adj_container)
-
-    return zone_border_rects
-
-def get_containing_nodes(leaf, rect, ignore_self=False):
+def get_containing_nodes(leaf, container, ignore_self=False):
     """Return a list of nodes which contain the specified rectangle. The query
     originates from the specified leaf node and can move freely throughout the
     tree. This function may return None which should be interpreted as
     'the rectangle extends outside of the tree containing leaf'
     """
     nodes = []
-    corners = rect.get_corners()
+
+    corners = container.get_corners()
     for x,y in corners:
 
         if leaf.contains(x,y):

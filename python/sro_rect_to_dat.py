@@ -126,7 +126,7 @@ def average_container(container):
     data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
 
     # if there is no data in the container or it has been moved, return an empty dictionary.
-    if len(data) == 0 or container.moved == True:
+    if len(data) == 0:
         return output
 
     # Compute the average RA and DEC using data from all measurements

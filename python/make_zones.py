@@ -32,8 +32,12 @@ def merge_polar_zones(root_node):
 
         if rect.y_min == -90 or rect.y_max < south:
             leaf.node_id = apass.south_zone_id
+            leaf.rect.x_min = 0
+            leaf.rect.x_max = 360
         elif rect.y_max == 90 or rect.y_min > north:
             leaf.node_id = apass.north_zone_id
+            leaf.rect.x_min = 0
+            leaf.rect.x_max = 360
 
 def number_zones(root_node):
 

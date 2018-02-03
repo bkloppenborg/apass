@@ -58,13 +58,15 @@ def get_adjacent_zone_ids(i, j):
 
     adj_zone_indices = []
 
-    # polar zones, return an entire row
-    if j == 0 or j == height - 1:
+    # North Polar Zone
+    if j == 0:
         for k in range(0, width):
-            if k == i:
-                continue
+            adj_zone_indices.append((k, j + 1))
 
-            adj_zone_indices.append((k, j))
+    # Southern Polar Zone
+    elif j == height - 1:
+        for k in range(0, width):
+            adj_zone_indices.append((k, j - 1))
 
     # first row after a polar zone
     elif j == 1:
@@ -373,12 +375,12 @@ def move_zero_edge_data(save_dir):
     # first move data near RA ~ 0 to RA 360+
     for j in range(1, height - 2):
         # get the left and right edge zones
-        zone_id = get_zone_id_from_indices(0, j)
-        adj_zone_id = get_zone_id_from_indices(width-1, j)
+        zone_id = get_zone_id_from_indices(width-1, j)
+        adj_zone_id = get_zone_id_from_indices(0, j)
 
         # run the fix-overlaps function, but flip the order of the zones
         # to ensure data gets moved from zone_id to adj_zone_id
-        fix_overlaps(save_dir, adj_zone_id, [zone_id])
+        fix_overlaps(save_dir, zone_id, [adj_zone_id])
 
 def process_indices(zone_indices, args):
 
