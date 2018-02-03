@@ -24,7 +24,7 @@ START=$(date +%s)
 # run all steps in the SRO pipeline
 python ${CODE_DIR}/make_zones.py ${SAVE_DIR}
 python ${CODE_DIR}/fred_to_zone.py ${OPTS} ${DATA_DIR}/*.fred ${SAVE_DIR}
-python ${CODE_DIR}/zone_to_rects.py ${OPTS} ${SAVE_DIR}/*.fredbin
+python ${CODE_DIR}/zone_to_rects.py ${OPTS} --debug ${SAVE_DIR}/*.fredbin
 python ${CODE_DIR}/fix_zone_overlaps.py ${OPTS} ${SAVE_DIR}
 python ${CODE_DIR}/sro_rect_to_dat.py ${OPTS} ${SAVE_DIR}/*-container.fredbin
 
@@ -33,7 +33,7 @@ END=$(date +%s)
 DIFF=$(( $END - $START ))
 echo "Pipeline took $DIFF seconds"
 
-read -p "Press enter see four-corner plots"
+read -p "Press enter to see four-corner plots"
 
 # plot the four zones
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z03351.fredbin --show-containers &
@@ -41,6 +41,10 @@ python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z03394.fredbin --show-containers &
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z01985.fredbin --show-containers &
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z02028.fredbin --show-containers &
 
-read -p "Press enter see 0 <-> 360 plots"
+read -p "Press enter to see 0 <-> 360 plots"
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z02050.fredbin --show-containers &
 python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z03415.fredbin --show-containers &
+
+read -p "Press enter to see polar zones"
+python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z00000.fredbin --show-containers &
+python ${CODE_DIR}/plot_zone.py ${SAVE_DIR}/z00001.fredbin --show-containers &
