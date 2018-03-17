@@ -29,11 +29,35 @@ sro_nights_names = ['num_nights_B', 'num_nights_V', 'num_nights_sg',
 sro_nights_types = ['int32'] * sro_num_phot
 sro_nights_fmt   = ['%4i'] * sro_num_phot
 sro_phot_names   = ['B', 'V', 'sg', 'sr', 'si']
+sro_filter_ids   = [2, 3, 8, 9, 10]
 sro_phot_types   = ['float32'] * sro_num_phot
 sro_phot_fmt     = ['%6.3f'] * sro_num_phot
 sro_err_names    = ['B_sig', 'V_sig', 'sg_sig', 'sr_sig', 'si_sig']
 sro_err_types    = ['float32'] * sro_num_phot
 sro_err_fmt      = ['%6.3f'] * sro_num_phot
+
+def filter_ids(dat_type="apass"):
+
+    filter_ids = []
+
+    if dat_type == "apass":
+        pass
+    elif dat_type == "sro":
+        filter_ids = sro_phot_names
+
+    return filter_ids
+
+
+def filter_names(dat_type="apass"):
+
+    filter_names = []
+
+    if dat_type == "apass":
+        pass
+    elif dat_type == "sro":
+        filter_names = sro_phot_names
+
+    return filter_names
 
 def select_format(dat_type = "apass"):
 
@@ -100,10 +124,10 @@ def write_dat(filename, data, dat_type="apass"):
     data['ra'] %= 360.0
 
     # compose a header
-    header =  "# APASS .dat file output. Format is as follows: \n"
-    header += "# Column names: " + ','.join(dat_col_names) + "\n"
-    header += "# Column types: " + ','.join(dat_col_types) + "\n"
-    header += "# Column formats: " + ','.join(dat_col_fmt) + "\n"
+    header =  "APASS .dat file output. Format is as follows: \n"
+    header += "Column names: " + ','.join(dat_col_names) + "\n"
+    header += "Column types: " + ','.join(dat_col_types) + "\n"
+    header += "Column formats: " + ','.join(dat_col_fmt) + "\n"
 
     # save to text
     np.savetxt(filename, data, fmt=dat_col_fmt, header=header)
@@ -155,4 +179,3 @@ def list_to_ndarray(a_list, dat_type="apass"):
     data = np.asarray(a_list, dtype={'names': dat_col_names, 'formats': dat_col_types})
 
     return data
-
