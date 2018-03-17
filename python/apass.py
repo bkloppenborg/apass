@@ -25,6 +25,31 @@ polar_zone_cutoff = 88 # |dec| greater than this are considered part of the pola
 south_zone_id = 0
 north_zone_id = 1
 
+filter_names = [
+    'U','B','V','R',
+    'F675W','I','HALC','F814W',
+    'OPEN','Z','J','H',
+    'K','KP','su','sg',
+    'sr','si','sz','HA',
+    'TB','TG','TR','OIII',
+    'ZS','Y']
+
+filter_ids = [
+    1,2,3,4,
+    4,5,4,5,
+    6,3,1,2,
+    3,3,7,8,
+    9,10,11,12,
+    24,25,26,16,
+    13,14]
+
+def filter_id_from_name(filter_name):
+    """Returns the identifier number for a filter given its name."""
+    idx = filter_names.index(filter_name)
+    filter_id = filter_ids[idx]
+
+    return filter_id
+
 def get_coords_raw(ra, dec):
     """Returns (ra', dec') = (ra*cos(dec), dec)"""
     ra_  = ra * cos(dec * pi / 180)
