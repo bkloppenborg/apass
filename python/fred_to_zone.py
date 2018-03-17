@@ -36,6 +36,7 @@ def build_data_dict(filename):
     # restore the tree. make-zones.py writes out leaves of type IDLeaf
     tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
 
+    data = read_fred(filename)
     # read the fred file into a numpy array
     print("Processing FRED file " + filename)
     try:
