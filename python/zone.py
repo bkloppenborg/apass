@@ -84,6 +84,10 @@ def load_zone(save_dir, zone_id):
     zone_container_file   = save_dir + apass.name_zone_container_file(zone_id)
     zone_border_info_file = save_dir + apass.name_zone_border_file(zone_id)
 
+    #print zone_json_file
+    #print zone_container_file
+    #print zone_border_info_file
+
     lock = FileLock(zone_container_file)
     lock.acquire()
 
