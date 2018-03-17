@@ -55,7 +55,7 @@ def export_rect(node):
         global rects
         rects.append(node.rect)
 
-def plot_zones(tree):
+def plot_zones(save_dir, tree):
     """Plots leaf zones found in the global rects variable"""
     tree.runFunc(export_rect)
     bounds = tree.rect
@@ -74,7 +74,7 @@ def plot_zones(tree):
         height = rect.y_max -  rect.y_min
         axes.add_patch(patches.Rectangle((x,y), width, height, fill=False))
 
-    plt.show()
+    plt.savefig(save_dir + "/global.png")
 
 rects = [] # stores exported rectangles
 
@@ -102,7 +102,7 @@ def main():
     merge_polar_zones(tree)
 
     if args.plot:
-        plot_zones(tree)
+        plot_zones(args.savedir, tree)
 
     leaves = tree.get_leaves()
     print("Created %i zones" % (len(leaves)))
