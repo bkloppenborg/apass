@@ -41,12 +41,60 @@ def compare_fred_data(A, B):
 
     return same_point
 
+def read_fred_manual(filename):
+    """Reads and tokenizes a FRED file using (simplistic) parsing methods.
+    Lines with errors will generate a warning message.
+
+    This function handles errors in the FRED files more gracefully than
+    read_fred, but is significantly slower.
+    """
+
+    # define a flags
+    flag_missing_columns = False
+
+    data = []
+    num_fredbin_cols = len(fredbin_col_names)
+    dtype={'names': fred_col_names,'formats': fred_col_types}
+
+    with open(filename, 'r') as infile:
+        for line in infile:
+            # remove whitespace from the lines
+            line = line.strip()
+
+            # skip comment lines
+            if line[0] == "#":
+                continue
+
+            # tokenize the line
+            line = line.split()
+
+            if len(line) < num_fredbin_cols:
+                flag_missing_columns = True
+                continue
+
+            # initial checks are ok. Append the data.
+            data.append(line)
+
+    if flag_missing_columns:
+        print("WARNING: %s is missing required columns")
+
+    # Convert the data into a numpy array:
+    data = np.asarray(data, dtype=dtype)
+    return data
 
 def read_fred(filename):
     """Reads in an APASS FRED file and returns the result as a numpy structured
     array with columns as specified in fred_col_names plus fredbin.fredbin_extra_cols"""
     dtype={'names': fred_col_names,'formats': fred_col_types}
-    data = np.loadtxt(filename, dtype=dtype)
+    data = []
+
+    # first attempt to load using numpy.loadtext
+    try:
+        data = np.loadtxt(filename, dtype=dtype)
+    except (ValueError,IndexError):
+        # if this fails, try parsing manually
+        data = read_fred_manual(filename)
+
     num_rows = len(data)
 
     night_name = night_from_filename(filename)
@@ -59,10 +107,14 @@ def read_fred(filename):
 
     return data
 
+
 def read_fredbin(filename):
-    """Reads in an APASS .fredbin file"""
+    """Reads in an APASS .fredbin file."""
+
     dtype={'names': fredbin_col_names,'formats': fredbin_col_types}
-    return np.fromfile(filename, dtype)
+    data = np.fromfile(filename, dtype)
+
+    return data
 
 def write_txt(fredbin_data, filename):
     header  = "APASS .fredbin text file dump. Format is as follows:\n"
