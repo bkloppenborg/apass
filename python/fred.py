@@ -76,7 +76,7 @@ def read_fred_manual(filename):
             data.append(line)
 
     if flag_missing_columns:
-        print("WARNING: %s is missing required columns")
+        print("WARNING: %s is missing required columns" % (filename))
 
     # Convert the data into a numpy array:
     data = np.asarray(data, dtype=dtype)
