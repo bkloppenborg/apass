@@ -53,7 +53,7 @@ def read_fred_manual(filename):
     flag_missing_columns = False
 
     data = []
-    num_fredbin_cols = len(fredbin_col_names)
+    num_fred_cols = len(fred_col_names)
     dtype={'names': fred_col_names,'formats': fred_col_types}
 
     with open(filename, 'r') as infile:
@@ -68,7 +68,7 @@ def read_fred_manual(filename):
             # tokenize the line
             line = line.split()
 
-            if len(line) < num_fredbin_cols:
+            if len(line) < num_fred_cols:
                 flag_missing_columns = True
                 continue
 
