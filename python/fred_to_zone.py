@@ -38,7 +38,6 @@ def build_data_dict(filename):
     tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
 
     # read the fred file into a numpy array
-    print("Processing FRED file " + filename)
     try:
         data = read_fred(filename)
     except ValueError:
@@ -75,6 +74,7 @@ def build_data_dict(filename):
 def add_fred(save_dir, filename):
     """Processes an APASS FRED file into zones using data contained in the tree"""
 
+    print("Processing FRED file " + filename)
     impacted_zones = []
     data_dict = build_data_dict(filename)
 
@@ -94,11 +94,14 @@ def add_fred(save_dir, filename):
 
             impacted_zones.append(zone_id)
 
+    print("Completed FRED file " + filename)
+
     return impacted_zones
 
 def remove_fred(save_dir, filename):
     """Removes the data found in the specified file."""
 
+    print("Processing FRED file " + filename)
     impacted_zones = []
     data_dict = build_data_dict(filename)
 
@@ -142,6 +145,9 @@ def remove_fred(save_dir, filename):
 
             if data_removed:
                 impacted_zones.append(zone_id)
+
+    print("Completed FRED file " + filename)
+
     return impacted_zones
 
 def main():
