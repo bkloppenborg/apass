@@ -24,12 +24,11 @@ START=$(date +%s)
 python ${CODE_DIR}/make_zones.py ${SAVE_DIR}
 
 # test import of malformed FRED file
-pdb ${CODE_DIR}/fred_to_zone.py ${OPTS} --debug ${DATA_DIR}/malformed.fred ${SAVE_DIR}
-
-#python ${CODE_DIR}/zone_to_rects.py ${OPTS} ${SAVE_DIR}/*.fredbin
-#python ${CODE_DIR}/fix_zone_overlaps.py ${OPTS} ${SAVE_DIR}
-#python ${CODE_DIR}/sro_rect_to_dat.py ${OPTS} ${SAVE_DIR}/*-container.fredbin
-#python ${CODE_DIR}/sro_merge_dat.py ${SAVE_DIR}/z*.dat
+python ${CODE_DIR}/fred_to_zone.py ${OPTS} --debug ${DATA_DIR}/malformed.fred ${SAVE_DIR}
+python ${CODE_DIR}/zone_to_rects.py ${OPTS} ${SAVE_DIR}/*.fredbin
+python ${CODE_DIR}/fix_zone_overlaps.py ${OPTS} ${SAVE_DIR}
+python ${CODE_DIR}/rect_to_dat.py ${OPTS} ${SAVE_DIR}/*-container.fredbin
+python ${CODE_DIR}/sro_merge_dat.py ${SAVE_DIR}/z*.dat
 
 # print out timing statistics
 END=$(date +%s)
