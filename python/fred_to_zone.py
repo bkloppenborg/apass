@@ -27,7 +27,7 @@ sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
 from filelock import FileLock
 
 
-def build_data_dict(save_dir, filename):
+def build_data_dict(filename):
     """Creates a dictionary which maps the data in the specified file to specific
     zone IDs."""
 
@@ -85,7 +85,7 @@ def add_fred(save_dir, filename):
 
     print("Processing FRED file " + filename)
     impacted_zones = []
-    data_dict = build_data_dict(save_dir, filename)
+    data_dict = build_data_dict(filename)
 
     if data_dict is not None:
         # Write out the data being sure to lock all related files prior to opening
@@ -107,12 +107,12 @@ def add_fred(save_dir, filename):
 
     return impacted_zones
 
-def remove_fred(save_dir, filename):
+def remove_fred(filename):
     """Removes the data found in the specified file."""
 
     print("Processing FRED file " + filename)
     impacted_zones = []
-    data_dict = build_data_dict(save_dir, filename)
+    data_dict = build_data_dict(filename)
 
     if data_dict is not None:
         # Write out the data being sure to lock all related files prior to opening
@@ -179,7 +179,7 @@ def main():
     tree_file = args.save_dir + "/global.json"
 
     global error_filename
-    error_filename = save_dir + "/fred_to_zone.errorlog"
+    error_filename = args.save_dir + "/fred_to_zone.errorlog"
 
     # truncate the error log file
     with open(error_filename, 'w') as error_file:
