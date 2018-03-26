@@ -32,12 +32,22 @@ import numpy.lib.recfunctions as nprf
 import warnings
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 
-# the maximum radius for which the field flattener works correctly
+valid_formats = ['sro', 'apass']
+
+# configuration settings for APASS
+apass_ccd_x_center = 2048 # pixels
+apass_ccd_y_center = 2048 # pixels
+apass_max_ccd_radius = 2500
+apass_filter_ids = dat.filter_ids(dat_type="apass")
+apass_filter_names = dat.filter_names(dat_type="apass") # however we write out V, (B-V), B, sg, sr, si)
+apass_min_num_observations = 3
+
+# configuration settings for SRO
 sro_ccd_x_center = 2048 # pixels
 sro_ccd_y_center = 2048 # pixels
 sro_max_ccd_radius = 3072.0 / 2
-sro_filter_ids = [2, 3, 8, 9, 10]
-sro_filter_names = ['B', 'V', 'sg', 'sr', 'si'] # however we write out V, (B-V), B, sg, sr, si)
+sro_filter_ids = dat.filter_ids(dat_type="sro")
+sro_filter_names = dat.filter_names(dat_type="sro") # however we write out V, (B-V), B, sg, sr, si)
 sro_min_num_observations = 3
 
 def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius,
@@ -108,6 +118,9 @@ def average_container(container):
     If there is no data in this container, the function will return an empty dictionary.
     """
 
+    global filter_ids
+    global filter_names
+
     # A container should store data on precisely one star, but that data will
     # be taken through multiple photometric filters and potentially originate from
     # multiple fields (telescope pointings). In this function, we average
@@ -131,7 +144,7 @@ def average_container(container):
 
     # Compute the average RA and DEC using data from all measurements
     rect = container.rect
-    output['field_id']         = data['field'][0]
+    output['field_id']         = data['field_id'][0]
     output['ra']               = average(data['ra'])
     output['ra_sig']           = std(data['ra'])
     output['dec']              = average(data['dec'])
@@ -174,10 +187,10 @@ def average_container(container):
             else:
                 mag_sig = t_data['xerr1']
 
-        filter_idx = sro_filter_ids.index(filter_id)
+        filter_idx = filter_ids.index(filter_id)
 
         # Assign the filter values to the corresponding entries in the dictionary
-        phot_name = sro_filter_names[filter_idx]
+        phot_name = filter_names[filter_idx]
         phot_sig_name = phot_name + "_sig"
         obs_name = 'num_obs_' + phot_name
         night_name = 'num_nights_' + phot_name
@@ -193,9 +206,15 @@ def average_container(container):
 
     return output
 
-def zone_to_dat(save_dir, zone_container_filename):
+def sro_zone_to_dat(save_dir, zone_container_filename):
     """Processes all of the rectangles found in zone. Zone should be a valid subdirectory
     of save_dir"""
+
+    global filter_ids
+    global filter_names
+
+    filter_ids   = sro_filter_ids
+    filter_names = sro_filter_names
 
     zone_id   = apass.zone_from_name(zone_container_filename)
     zone_name = apass.name_zone(zone_id)
@@ -259,12 +278,45 @@ def zone_to_dat(save_dir, zone_container_filename):
     graph_filename = save_dir + "/" + zone_name + ".p"
     nx.write_gpickle(G, graph_filename)
 
+def apass_zone_to_dat(save_dir, zone_container_filename):
+    """Process all of the rectangles found in the zone.
+    With APASS data, we average on a per-container basis."""
+
+    global filter_ids
+    global filter_names
+    filter_ids   = sro_filter_ids
+    filter_names = sro_filter_names
+
+    averages = []
+
+    zone_id   = apass.zone_from_name(zone_container_filename)
+    zone_name = apass.name_zone(zone_id)
+    print "Processing zone " + zone_name
+
+    # load the zone's tree and data from disk and get the leaves
+    zone_json = save_dir + apass.name_zone_json_file(zone_id)
+    zone_tree = QuadTreeNode.from_file(zone_json, leafClass=RectLeaf)
+    zone.load_zone_data(zone_tree, save_dir)
+    leaves = zone_tree.get_leaves()
+
+    # average the data in each container.
+    for leaf in leaves:
+        for container in leaf.containers:
+            # average the data
+            c_ave = average_container(container)
+            averages.append(c_ave)
+
+    # write out the average information
+    dat_filename = save_dir + "/" + zone_name + ".dat"
+    averages = dat.dicts_to_ndarray(averages, dat_type = "sro")
+    dat.write_dat(dat_filename, averages, dat_type="sro")
 
 def main():
 
     parser = argparse.ArgumentParser(
         description="Converts a containerized zone into APASS photometric output")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
+    parser.add_argument('format', type=str, default="apass", choices=valid_formats)
     parser.add_argument('input', nargs='+')
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
@@ -275,7 +327,11 @@ def main():
 
     # construct a partial function signature for execution
     save_dir = os.path.dirname(os.path.realpath(args.input[0])) + "/"
-    ztd_func = partial(zone_to_dat, save_dir)
+
+    # select the zone-to-dat function
+    ztd_func = partial(apass_zone_to_dat, save_dir) # by default, assume APASS format data
+    if args.format == "sro":
+        ztd_func = partial(sro_zone_to_dat, save_dir)
 
     # run in debug mode
     if args.debug:
