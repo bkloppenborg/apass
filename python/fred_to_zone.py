@@ -26,13 +26,16 @@ import sys, os
 sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
 from filelock import FileLock
 
-def build_data_dict(filename):
+
+def build_data_dict(save_dir, filename):
     """Creates a dictionary which maps the data in the specified file to specific
     zone IDs."""
 
-    data_dict = {}
-
     global tree_file
+    global error_filename
+
+    data_dict = {}
+    flag_read_error = False
 
     # restore the tree. make-zones.py writes out leaves of type IDLeaf
     tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
@@ -42,12 +45,18 @@ def build_data_dict(filename):
         data = read_fred(filename)
     except ValueError:
         print("ERROR: File %s has a bad value and was not parsed" % (filename))
-        return None
+        flag_read_error = True
     except IndexError:
         print("ERROR: File %s is missing data and was not parsed" % (filename))
-        return None
+        flag_read_error = True
     except:
         print("ERROR: File %s has an unknown error and was not parsed" % (filename))
+        flag_read_error = True
+
+    if flag_read_error:
+        with FileLock(error_filename, timeout=100, delay=0.05):
+            with open(error_filename, 'a') as error_file:
+                error_file.write("ERROR: Cannot parse %s" % (filename))
         return None
 
     # process every file, inserting it into a .dat file. Keep track of any
@@ -76,7 +85,7 @@ def add_fred(save_dir, filename):
 
     print("Processing FRED file " + filename)
     impacted_zones = []
-    data_dict = build_data_dict(filename)
+    data_dict = build_data_dict(save_dir, filename)
 
     if data_dict is not None:
         # Write out the data being sure to lock all related files prior to opening
@@ -103,7 +112,7 @@ def remove_fred(save_dir, filename):
 
     print("Processing FRED file " + filename)
     impacted_zones = []
-    data_dict = build_data_dict(filename)
+    data_dict = build_data_dict(save_dir, filename)
 
     if data_dict is not None:
         # Write out the data being sure to lock all related files prior to opening
@@ -168,6 +177,13 @@ def main():
     # load the global tree
     global tree_file
     tree_file = args.save_dir + "/global.json"
+
+    global error_filename
+    error_filename = save_dir + "/fred_to_zone.errorlog"
+
+    # truncate the error log file
+    with open(error_filename, 'w') as error_file:
+        error_file.truncate()
 
     # Construct a partial to serve as the function to call in serial or
     # parallel mode below.
