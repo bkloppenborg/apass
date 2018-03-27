@@ -17,7 +17,7 @@ class RectContainer(dict):
         self.num_data = 0
 
         dr = 1. / (60 * 60) # 1 arcsecond in degrees
-        dx = dr * cos(y * pi /  180)
+        dx = dr / cos(y * pi /  180)
         dy = dr
         self.rect = Rect(x - dx, x + dx, y - dy, y + dy)
         # self.data is a list of numpy.ndarray objects
