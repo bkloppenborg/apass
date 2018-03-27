@@ -9,6 +9,7 @@ import numpy as np
 import time
 import itertools
 import networkx as nx
+from math import sqrt
 
 # APASS-specific things
 import apass
@@ -79,7 +80,12 @@ def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius,
 
     return data
 
-def average_by_field(container):
+def average_by_field(container,
+                     ccd_x_center,
+                     ccd_y_center,
+                     max_ccd_radius,
+                     min_num_observations,
+                     dat_type="sro"):
     """Parses the measurements within a container and averages the data by field.
 
     This function returns a nested dictionary whose keys are the field IDs and values
@@ -105,15 +111,25 @@ def average_by_field(container):
         t_data = data[indexes]
         t_container = RectContainer(x, y, t_data, zone_id, node_id, cont_id)
         t_container.rect = container.rect
-        ave_data = average_container(t_container)
+        ave_data = average_container(t_container,
+                                     ccd_x_center,
+                                     ccd_y_center,
+                                     max_ccd_radius,
+                                     min_num_observations,
+                                     dat_type=dat_type)
         output.append(ave_data)
 
     return output
 
-def average_container(container):
+def average_container(container,
+                      ccd_x_center,
+                      ccd_y_center,
+                      max_ccd_radius,
+                      min_num_observations,
+                      dat_type="apass"):
     """Parses the measurements contained within a container and averages the data.
 
-    Data will be returned as a sro-formatted dictionary, created with dat.make_dat_dict
+    Data will be returned as a formatted dictionary, created with dat.make_dat_dict
 
     If there is no data in this container, the function will return an empty dictionary.
     """
@@ -126,7 +142,7 @@ def average_container(container):
     # multiple fields (telescope pointings). In this function, we average
     # the photometry for each field and generate one output line for each field.
 
-    output = dat.make_dat_dict(dat_type="sro")
+    output = dat.make_dat_dict(dat_type=dat_type)
 
     # Read in the data. This will be a numpy.narray object, so we can slice
     # and dice it however we would like.
@@ -159,8 +175,8 @@ def average_container(container):
     ##
     # Filtering Stages
     ##
-    data = filter_by_ccd_radius(data, sro_ccd_x_center, sro_ccd_y_center, sro_max_ccd_radius,
-                                min_num_observations = sro_min_num_observations)
+    data = filter_by_ccd_radius(data, ccd_x_center, ccd_y_center, max_ccd_radius,
+                                min_num_observations = min_num_observations)
 
     # get a list of filters in numerical order
     filter_ids = sorted(set(data['filter_id']))
@@ -179,7 +195,7 @@ def average_container(container):
         mag     = 99.999
         mag_sig = 99.999
 
-        if num_obs > 0:
+        if num_obs >= min_num_observations:
             # magnitude and its uncertainty
             mag = average(t_data['xmag1'])
             if num_obs > 1:
@@ -200,9 +216,9 @@ def average_container(container):
         output[obs_name]      = int(num_obs)
         output[night_name]    = int(num_nights)
 
-# TODO: Compute B-V color
-#    if output["B"] is not None and output["V"] is not None:
-#        output["B_V"] = output["B"] - output["V"]
+    if output["B"] < 99.9 and output["V"] < 99.9:
+        output["B_V"] = output["B"] - output["V"]
+        output["B_V_sig"] = sqrt( output["B_sig"]**2 + output["V_sig"]**2 )
 
     return output
 
@@ -235,7 +251,12 @@ def sro_zone_to_dat(save_dir, zone_container_filename):
     for leaf in leaves:
         for container in leaf.containers:
             # average the data
-            c_aves = average_by_field(container)
+            c_aves = average_by_field(container,
+                                      sro_ccd_x_center,
+                                      sro_ccd_y_center,
+                                      sro_max_ccd_radius,
+                                      sro_min_num_observations,
+                                      dat_type="sro")
             averages.extend(c_aves)
 
             # populate overlapping line information
@@ -284,8 +305,8 @@ def apass_zone_to_dat(save_dir, zone_container_filename):
 
     global filter_ids
     global filter_names
-    filter_ids   = sro_filter_ids
-    filter_names = sro_filter_names
+    filter_ids   = apass_filter_ids
+    filter_names = apass_filter_names
 
     averages = []
 
@@ -303,13 +324,18 @@ def apass_zone_to_dat(save_dir, zone_container_filename):
     for leaf in leaves:
         for container in leaf.containers:
             # average the data
-            c_ave = average_container(container)
+            c_ave = average_container(container,
+                                      apass_ccd_x_center,
+                                      apass_ccd_y_center,
+                                      apass_max_ccd_radius,
+                                      apass_min_num_observations,
+                                      dat_type="apass")
             averages.append(c_ave)
 
     # write out the average information
     dat_filename = save_dir + "/" + zone_name + ".dat"
-    averages = dat.dicts_to_ndarray(averages, dat_type = "sro")
-    dat.write_dat(dat_filename, averages, dat_type="sro")
+    averages = dat.dicts_to_ndarray(averages, dat_type = "apass")
+    dat.write_dat(dat_filename, averages, dat_type="apass")
 
 def main():
 

@@ -18,6 +18,24 @@ std_dat_fmt   = ["%25s", "%10.6f", "%6.3f", "%10.6f", "%6.3f",
                  "%5i", "%5i", "%5i",
                  '%6.3f', '%6.3f', '%6.3f']
 
+# format information specific to the APASS data
+apass_num_phot     = 5
+apass_obs_names    = ['num_obs_B', 'num_obs_V', 'num_obs_sg',
+                    'num_obs_sr', 'num_obs_si']
+apass_obs_types    = ['int32'] * apass_num_phot
+apass_obs_fmt      = ['%4i'] * apass_num_phot
+apass_nights_names = ['num_nights_B', 'num_nights_V', 'num_nights_sg',
+                    'num_nights_sr', 'num_nights_si']
+apass_nights_types = ['int32'] * apass_num_phot
+apass_nights_fmt   = ['%4i'] * apass_num_phot
+apass_phot_names   = ['B', 'V', 'sg', 'sr', 'si']
+apass_filter_ids   = [2, 3, 8, 9, 10]
+apass_phot_types   = ['float32'] * apass_num_phot
+apass_phot_fmt     = ['%6.3f'] * apass_num_phot
+apass_err_names    = ['B_sig', 'V_sig', 'sg_sig', 'sr_sig', 'si_sig']
+apass_err_types    = ['float32'] * apass_num_phot
+apass_err_fmt      = ['%6.3f'] * apass_num_phot
+
 # format information specific to the SRO data.
 sro_num_phot     = 5
 sro_obs_names    = ['num_obs_B', 'num_obs_V', 'num_obs_sg',
@@ -41,7 +59,7 @@ def filter_ids(dat_type="apass"):
     filter_ids = []
 
     if dat_type == "apass":
-        pass
+        filter_ids = apass_phot_names
     elif dat_type == "sro":
         filter_ids = sro_phot_names
 
@@ -53,7 +71,7 @@ def filter_names(dat_type="apass"):
     filter_names = []
 
     if dat_type == "apass":
-        pass
+        filter_names = apass_phot_names
     elif dat_type == "sro":
         filter_names = sro_phot_names
 
@@ -67,8 +85,20 @@ def select_format(dat_type = "apass"):
     dat_col_fmt   = list(std_dat_fmt)
 
     if dat_type == "apass":
+        dat_col_names.extend(apass_obs_names)
+        dat_col_types.extend(apass_obs_types)
+        dat_col_fmt.extend(apass_obs_fmt)
+        # nights numbers
+        dat_col_names.extend(apass_nights_names)
+        dat_col_types.extend(apass_nights_types)
+        dat_col_fmt.extend(apass_nights_fmt)
+        # photometry
         dat_col_names.extend(apass_phot_names)
         dat_col_types.extend(apass_phot_types)
+        dat_col_fmt.extend(apass_phot_fmt)
+        dat_col_names.extend(apass_err_names)
+        dat_col_types.extend(apass_err_types)
+        dat_col_fmt.extend(apass_err_fmt)
     elif dat_type == "sro":
         # observation numbers
         dat_col_names.extend(sro_obs_names)
@@ -141,6 +171,11 @@ def dicts_to_ndarray(dicts, dat_type="apass"):
     # convert each dict into a list in the correct order
     for d in dicts:
         # fill in any None values in the dictionary
+        if(dat_type == "apass"):
+            fill_none_values(d, apass_nights_names, 0)
+            fill_none_values(d, apass_obs_names, 0)
+            fill_none_values(d, apass_phot_names, 99.999)
+            fill_none_values(d, apass_err_names, 99.999)
         if(dat_type == "sro"):
             fill_none_values(d, sro_nights_names, 0)
             fill_none_values(d, sro_obs_names, 0)
