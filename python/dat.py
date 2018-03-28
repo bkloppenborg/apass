@@ -14,9 +14,9 @@ std_dat_names = ['field_id', 'ra', 'ra_sig', 'dec', 'dec_sig',
 std_dat_types = ['S25', 'float64', 'float64', 'float64', 'float64',
                  'int32', 'int32', 'int32',
                  'float32', 'float32', 'float32']
-std_dat_fmt   = ["%25s", "%10.6f", "%6.3f", "%10.6f", "%6.3f",
+std_dat_fmt   = ["%25s", "%010.6f", "%06.3f", "%010.6f", "%06.3f",
                  "%5i", "%5i", "%5i",
-                 '%6.3f', '%6.3f', '%6.3f']
+                 '%06.3f', '%06.3f', '%06.3f']
 
 # format information specific to the APASS data
 apass_num_phot     = 5
@@ -31,10 +31,10 @@ apass_nights_fmt   = ['%4i'] * apass_num_phot
 apass_phot_names   = ['B', 'V', 'sg', 'sr', 'si']
 apass_filter_ids   = [2, 3, 8, 9, 10]
 apass_phot_types   = ['float32'] * apass_num_phot
-apass_phot_fmt     = ['%6.3f'] * apass_num_phot
+apass_phot_fmt     = ['%06.3f'] * apass_num_phot
 apass_err_names    = ['B_sig', 'V_sig', 'sg_sig', 'sr_sig', 'si_sig']
 apass_err_types    = ['float32'] * apass_num_phot
-apass_err_fmt      = ['%6.3f'] * apass_num_phot
+apass_err_fmt      = ['%06.3f'] * apass_num_phot
 
 # format information specific to the SRO data.
 sro_num_phot     = 5
@@ -49,10 +49,10 @@ sro_nights_fmt   = ['%4i'] * sro_num_phot
 sro_phot_names   = ['B', 'V', 'sg', 'sr', 'si']
 sro_filter_ids   = [2, 3, 8, 9, 10]
 sro_phot_types   = ['float32'] * sro_num_phot
-sro_phot_fmt     = ['%6.3f'] * sro_num_phot
+sro_phot_fmt     = ['%06.3f'] * sro_num_phot
 sro_err_names    = ['B_sig', 'V_sig', 'sg_sig', 'sr_sig', 'si_sig']
 sro_err_types    = ['float32'] * sro_num_phot
-sro_err_fmt      = ['%6.3f'] * sro_num_phot
+sro_err_fmt      = ['%06.3f'] * sro_num_phot
 
 def filter_ids(dat_type="apass"):
 
