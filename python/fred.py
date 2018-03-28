@@ -21,7 +21,7 @@ fredbin_col_names.extend(fredbin_extra_col_names)
 fredbin_col_types = copy(fred_col_types)
 fredbin_extra_col_types = ['int32', 'int32', 'int32', 'S7']
 fredbin_col_types.extend(fredbin_extra_col_types)
-fredbin_col_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d', '%d', '%02.6f', '%02.6f', '%6i', '%6i', '%11s', '%03i', '%02.6f', '%02.6f', '%02.6f', '%6i', '%6i', '%6i', '%6i', '%6i', '%7s']
+fredbin_col_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d', '%d', '%02.6f', '%02.6f', '%6i', '%6i', '%11s', '%03i', '%02.6f', '%02.6f', '%+02.6f', '%6i', '%6i', '%6i', '%6i', '%6i', '%7s']
 
 def night_from_filename(filename):
     filename = os.path.basename(filename)
