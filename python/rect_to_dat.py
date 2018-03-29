@@ -22,6 +22,11 @@ import fred
 import dat
 import zone
 
+# lockfile
+import sys, os
+sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
+from filelock import FileLock
+
 # parallel processing
 import multiprocessing as mp
 from functools import partial
@@ -179,11 +184,17 @@ def average_container(container,
                                 min_num_observations = min_num_observations)
 
     # get a list of filters in numerical order
-    filter_ids = sorted(set(data['filter_id']))
-    output['filter_ids'] = filter_ids
+    # NOTE: It is possible that the data contain filters not specified in
+    # the standard set of filter IDs. We skip these cases below
+    data_filter_ids = sorted(set(data['filter_id']))
 
     # iterate over the filters extracting the relevant statistics
-    for filter_id in filter_ids:
+    for filter_id in data_filter_ids:
+
+        # skip filters not in the specified filter set
+        if filter_id not in filter_ids:
+            continue
+
         # extract the data in this filter
         indexes = np.where((data['filter_id'] == filter_id) & (data['use_data'] == True))
         t_data = data[indexes]
@@ -203,9 +214,8 @@ def average_container(container,
             else:
                 mag_sig = t_data['xerr1']
 
-        filter_idx = filter_ids.index(filter_id)
-
         # Assign the filter values to the corresponding entries in the dictionary
+        filter_idx = filter_ids.index(filter_id)
         phot_name = filter_names[filter_idx]
         phot_sig_name = phot_name + "_sig"
         obs_name = 'num_obs_' + phot_name
@@ -215,8 +225,10 @@ def average_container(container,
         output[phot_sig_name] = float(mag_sig)
         output[obs_name]      = int(num_obs)
         output[night_name]    = int(num_nights)
+        output['filter_ids'].append(filter_id)
 
-    if output["B"] < 99.9 and output["V"] < 99.9:
+    if (output["B"] is not None and output["B"] < 99.9 and
+        output["V"] is not None and output["V"] < 99.9):
         output["B_V"] = output["B"] - output["V"]
         output["B_V_sig"] = sqrt( output["B_sig"]**2 + output["V_sig"]**2 )
 
@@ -337,6 +349,20 @@ def apass_zone_to_dat(save_dir, zone_container_filename):
     averages = dat.dicts_to_ndarray(averages, dat_type = "apass")
     dat.write_dat(dat_filename, averages, dat_type="apass")
 
+def zone_to_dat(proc_func, save_dir, zone_container_filename):
+    """Wrapper function that includes exception handling and logging"""
+
+    error_filename = save_dir + "rect_to_dat.error"
+
+    try:
+        proc_func(save_dir, zone_container_filename)
+    except:
+        message = "ERROR: Failed to convert %s. Re-run in debug mode." % (zone_container_filename)
+        print(message)
+        with FileLock(error_filename, timeout=100, delay=0.05):
+            with open(error_filename, 'a') as error_file:
+                error_file.write(message)
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -355,9 +381,10 @@ def main():
     save_dir = os.path.dirname(os.path.realpath(args.input[0])) + "/"
 
     # select the zone-to-dat function
-    ztd_func = partial(apass_zone_to_dat, save_dir) # by default, assume APASS format data
+    # by default, assume APASS format data
+    ztd_func = partial(zone_to_dat, apass_zone_to_dat, save_dir)
     if args.format == "sro":
-        ztd_func = partial(sro_zone_to_dat, save_dir)
+        ztd_func = partial(zone_to_dat, sro_zone_to_dat, save_dir)
 
     # run in debug mode
     if args.debug:
