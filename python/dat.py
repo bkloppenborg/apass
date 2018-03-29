@@ -19,20 +19,18 @@ std_dat_fmt   = ["%25s", "%11.6f", "%7.3f", "%11.6f", "%7.3f",
                  '%7.3f', '%7.3f', '%07.3f']
 
 # forma+33t information specific to the APASS data
-apass_num_phot     = 5
-apass_obs_names    = ['num_obs_B', 'num_obs_V', 'num_obs_sg',
-                    'num_obs_sr', 'num_obs_si']
+apass_phot_names   = ['B', 'V', 'su', 'sg', 'sr', 'si', 'sz', 'Ha', 'zs', 'y']
+apass_filter_ids   = [2, 3, 7, 8, 9, 10, 12, 13, 14]
+apass_num_phot     = len(apass_phot_names)
+apass_obs_names    = ['num_obs_' + s for s in apass_phot_names]
 apass_obs_types    = ['int32'] * apass_num_phot
 apass_obs_fmt      = ['%4i'] * apass_num_phot
-apass_nights_names = ['num_nights_B', 'num_nights_V', 'num_nights_sg',
-                    'num_nights_sr', 'num_nights_si']
+apass_nights_names = ['num_nights_' + s for s in apass_phot_names]
 apass_nights_types = ['int32'] * apass_num_phot
 apass_nights_fmt   = ['%4i'] * apass_num_phot
-apass_phot_names   = ['B', 'V', 'sg', 'sr', 'si']
-apass_filter_ids   = [2, 3, 8, 9, 10]
 apass_phot_types   = ['float32'] * apass_num_phot
 apass_phot_fmt     = ['%06.3f'] * apass_num_phot
-apass_err_names    = ['B_sig', 'V_sig', 'sg_sig', 'sr_sig', 'si_sig']
+apass_err_names    = [s + "_sig" for s in apass_phot_names]
 apass_err_types    = ['float32'] * apass_num_phot
 apass_err_fmt      = ['%06.3f'] * apass_num_phot
 
