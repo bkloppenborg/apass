@@ -14,11 +14,11 @@ std_dat_names = ['field_id', 'ra', 'ra_sig', 'dec', 'dec_sig',
 std_dat_types = ['S25', 'float64', 'float64', 'float64', 'float64',
                  'int32', 'int32', 'int32',
                  'float32', 'float32', 'float32']
-std_dat_fmt   = ["%25s", "%010.6f", "%06.3f", "%010.6f", "%06.3f",
+std_dat_fmt   = ["%25s", "%11.6f", "%7.3f", "%11.6f", "%7.3f",
                  "%5i", "%5i", "%5i",
-                 '%06.3f', '%06.3f', '%06.3f']
+                 '%7.3f', '%7.3f', '%07.3f']
 
-# format information specific to the APASS data
+# forma+33t information specific to the APASS data
 apass_num_phot     = 5
 apass_obs_names    = ['num_obs_B', 'num_obs_V', 'num_obs_sg',
                     'num_obs_sr', 'num_obs_si']
