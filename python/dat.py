@@ -19,8 +19,8 @@ std_dat_fmt   = ["%25s", "%11.6f", "%7.3f", "%11.6f", "%7.3f",
                  '%7.3f', '%7.3f', '%07.3f']
 
 # forma+33t information specific to the APASS data
-apass_phot_names   = ['B', 'V', 'su', 'sg', 'sr', 'si', 'sz', 'Ha', 'zs', 'y']
-apass_filter_ids   = [2, 3, 7, 8, 9, 10, 12, 13, 14]
+apass_phot_names   = ['B', 'V', 'su', 'sg', 'sr', 'si', 'sz', 'Ha', 'ZS', 'Y']
+apass_filter_ids   = [2, 3, 7, 8, 9, 10, 11, 12, 13, 14]
 apass_num_phot     = len(apass_phot_names)
 apass_obs_names    = ['num_obs_' + s for s in apass_phot_names]
 apass_obs_types    = ['int32'] * apass_num_phot
