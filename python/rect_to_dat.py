@@ -352,17 +352,19 @@ def apass_zone_to_dat(save_dir, zone_container_filename):
 def zone_to_dat(proc_func, save_dir, zone_container_filename):
     """Wrapper function that includes exception handling and logging"""
 
-    error_filename = save_dir + "error_rect_to_dat.txt"
+    global error_filename
 
     proc_func(save_dir, zone_container_filename)
-    #try:
-    #    proc_func(save_dir, zone_container_filename)
-    #except Exception as e:
-    #    message = "ERROR: Failed to convert %s. Re-run in debug mode.\n" % (zone_container_filename)
-    #    print(message)
-    #    with FileLock(error_filename, timeout=100, delay=0.05):
-    #        with open(error_filename, 'a') as error_file:
-    #            error_file.write(message + " " + str(e))
+    try:
+        proc_func(save_dir, zone_container_filename)
+    except:
+        message = "ERROR: Failed to convert %s. Re-run in debug mode.\n" % (zone_container_filename)
+        tb = traceback.format_exc()
+
+        print(message)
+        with FileLock(error_filename, timeout=100, delay=0.05):
+            with open(error_filename, 'a') as error_file:
+                error_file.write(message + "\n" + str(tb) + "\n")
 
 def main():
 
@@ -374,12 +376,18 @@ def main():
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
 
+    global error_filename
+
     # Parse the arguments and start timing the script.
     args = parser.parse_args()
     start = time.time()
 
     # construct a partial function signature for execution
     save_dir = os.path.dirname(os.path.realpath(args.input[0])) + "/"
+
+    # clear out the error file
+    error_filename = save_dir + "error_rect_to_dat.txt"
+    os.remove(error_filename)
 
     # select the zone-to-dat function
     # by default, assume APASS format data
