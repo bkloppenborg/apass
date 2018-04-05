@@ -387,7 +387,10 @@ def main():
 
     # clear out the error file
     error_filename = save_dir + "error_rect_to_dat.txt"
-    os.remove(error_filename)
+    try:
+        os.remove(error_filename)
+    except:
+        pass
 
     # select the zone-to-dat function
     # by default, assume APASS format data
