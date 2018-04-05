@@ -57,9 +57,9 @@ def filter_ids(dat_type="apass"):
     filter_ids = []
 
     if dat_type == "apass":
-        filter_ids = apass_phot_names
+        filter_ids = apass_filter_ids
     elif dat_type == "sro":
-        filter_ids = sro_phot_names
+        filter_ids = sro_filter_ids
 
     return filter_ids
 

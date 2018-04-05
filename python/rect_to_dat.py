@@ -352,12 +352,12 @@ def apass_zone_to_dat(save_dir, zone_container_filename):
 def zone_to_dat(proc_func, save_dir, zone_container_filename):
     """Wrapper function that includes exception handling and logging"""
 
-    error_filename = save_dir + "rect_to_dat.error"
+    error_filename = save_dir + "error_rect_to_dat.txt"
 
     try:
         proc_func(save_dir, zone_container_filename)
     except:
-        message = "ERROR: Failed to convert %s. Re-run in debug mode." % (zone_container_filename)
+        message = "ERROR: Failed to convert %s. Re-run in debug mode.\n" % (zone_container_filename)
         print(message)
         with FileLock(error_filename, timeout=100, delay=0.05):
             with open(error_filename, 'a') as error_file:
