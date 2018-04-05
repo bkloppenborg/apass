@@ -10,6 +10,7 @@ import time
 import itertools
 import networkx as nx
 from math import sqrt
+import traceback
 
 # APASS-specific things
 import apass
@@ -225,7 +226,6 @@ def average_container(container,
         output[phot_sig_name] = float(mag_sig)
         output[obs_name]      = int(num_obs)
         output[night_name]    = int(num_nights)
-        output['filter_ids'].append(filter_id)
 
     if (output["B"] is not None and output["B"] < 99.9 and
         output["V"] is not None and output["V"] < 99.9):
@@ -354,14 +354,15 @@ def zone_to_dat(proc_func, save_dir, zone_container_filename):
 
     error_filename = save_dir + "error_rect_to_dat.txt"
 
-    try:
-        proc_func(save_dir, zone_container_filename)
-    except:
-        message = "ERROR: Failed to convert %s. Re-run in debug mode.\n" % (zone_container_filename)
-        print(message)
-        with FileLock(error_filename, timeout=100, delay=0.05):
-            with open(error_filename, 'a') as error_file:
-                error_file.write(message)
+    proc_func(save_dir, zone_container_filename)
+    #try:
+    #    proc_func(save_dir, zone_container_filename)
+    #except Exception as e:
+    #    message = "ERROR: Failed to convert %s. Re-run in debug mode.\n" % (zone_container_filename)
+    #    print(message)
+    #    with FileLock(error_filename, timeout=100, delay=0.05):
+    #        with open(error_filename, 'a') as error_file:
+    #            error_file.write(message + " " + str(e))
 
 def main():
 
