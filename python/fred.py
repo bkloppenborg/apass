@@ -11,8 +11,8 @@ from copy import copy
 # FILCON ver 3.3
 # RA (J2000)    DEC        CCDX      CCDY  Flags   HJD      Airmass   Set      Group   Object                   Filt   Mag    Error    dmag    sys night
 # 105.4134694   0.6743509  2996.030    31.010 0 0 56029.599560 1.310    1          2 10040L                        8  16.5515  0.2880  0.0391   232 56029
-fred_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'airmass', 'set', 'group', 'field_id', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night']
-fred_col_types = ['float64', 'float64', 'float32', 'float32', 'bool', 'bool', 'float32', 'float32', 'int32', 'int32', 'S25', 'uint8', 'float32', 'float32', 'float32', 'int32', 'int32']
+fred_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'airmass', 'set', 'group', 'field_id', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night', 'exposure_time']
+fred_col_types = ['float64', 'float64', 'float32', 'float32', 'bool', 'bool', 'float32', 'float32', 'int32', 'int32', 'S25', 'uint8', 'float32', 'float32', 'float32', 'int32', 'int32', 'float32']
 
 # fredbin follows the same format as fred, but also has columns for 'rect' and 'container'
 fredbin_col_names = copy(fred_col_names)
