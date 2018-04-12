@@ -127,6 +127,58 @@ def average_by_field(container,
 
     return output
 
+def compute_weights(data, filter_id):
+    """Computes weights associated with APASS data"""
+
+    weights = np.ones(len(data))
+
+    try:
+        for i in range(0, num_obs):
+            exptime  = data[i]['exposure_time']
+            mag      = data[i]['xmag1']
+            sig      = data[i]['xerr1']
+            weight   = weights[i]
+
+            # here we use the raw filter numbers
+            if filter_id in [7, 11, 13, 14]: # su, sz, ZS, Y
+                weight = 1
+            elif filter_id in [3,9,10]: # V, sr, si
+                if mag < 10 and exptime >= 20:
+                    weight = 0
+                elif mag > 10:
+                    if sig < 0.01:
+                        weight = 3
+                    elif sig > 0.05:
+                        weight = 1
+                    else:
+                        weight = 2
+                else:
+                    weight = 1
+            elif filter_id in [2,8]: # B and sg
+                if mag < 10 and exptime >= 40:
+                    weight = 0
+                elif mag > 10:
+                    if sig < 0.01:
+                        weight = 3
+                    elif sig > 0.05:
+                        weight = 1
+                    else:
+                        weight = 2
+                else:
+                    weight = 1
+            else:
+                weight = 1
+
+            # update the weight
+            weights[i] = weight
+
+    except:
+        # reset the weights to all ones
+        weights = np.ones(len(t_data))
+
+    return weights
+
+
 def average_container(container,
                       ccd_x_center,
                       ccd_y_center,
@@ -208,8 +260,12 @@ def average_container(container,
         mag_sig = 99.999
 
         if num_obs >= min_num_observations:
+
+            # initialize the weight vector
+            weights = compute_weights(t_data, filter_id)
+
             # magnitude and its uncertainty
-            mag = average(t_data['xmag1'])
+            mag = average(t_data['xmag1'], weights)
             if num_obs > 1:
                 mag_sig = std(t_data['xmag1'])
             else:
