@@ -119,9 +119,10 @@ def write_mapping_info(save_dir, filename, data_dict, mode="add"):
     mapping_data.append(filename)
     mapping_data.append(data_dict['num_fred_data'])
     for zone_id in range(0, num_zones):
-        num_data = data_dict[zone_id]
-        if num_data is None:
-            num_data = 0
+        num_data = 0
+        zone_data = data_dict[zone_id]
+        if zone_data is not None:
+            num_data = len(zone_data)
 
         num_data *= sign
         mapping_data.append(num_data)
