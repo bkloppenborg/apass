@@ -10,6 +10,7 @@ import glob
 from functools import partial
 import time
 import traceback
+import datetime
 
 # parallel processing
 import multiprocessing as mp
@@ -17,7 +18,8 @@ import multiprocessing as mp
 # APASS-specific things
 from quadtree import *
 from quadtree_types import *
-from apass import get_coords, name_zone_file, name_zone_contrib_file, name_zone_file
+from apass import name_zone_file, name_zone_contrib_file, name_zone_file
+from apass import get_coords, get_num_zones
 
 # File I/O
 from fred import read_fred
@@ -26,6 +28,19 @@ import sys, os
 sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
 from filelock import FileLock
 
+def make_data_dict():
+    """Constructs a data dictionary consisting of the following fields:
+       num_fred_data - integer, number of values read in from FRED files
+       XXXXXX        - zone ID as key with data to be inserted into that zone as value
+    """
+
+    out = dict()
+    out['num_fred_data'] = 0
+    num_zones = get_num_zones()
+    for i in range(0, num_zones):
+        out[i] = list()
+
+    return out
 
 def build_data_dict(filename):
     """Creates a dictionary which maps the data in the specified file to specific
@@ -34,7 +49,9 @@ def build_data_dict(filename):
     global tree_file
     global error_filename
 
-    data_dict = {}
+    # create the data dictionary which will store data values.
+    data_dict = dict()
+
     flag_read_error = False
 
     # restore the tree. make-zones.py writes out leaves of type IDLeaf
@@ -59,49 +76,101 @@ def build_data_dict(filename):
                 error_file.write("ERROR: Cannot parse %s" % (filename))
         return None
 
-    # process every file, inserting it into a .dat file. Keep track of any
-    # files that were opened in the open_files set
+    # update the number of data points read.
+    data_dict['num_fred_data'] = len(data)
+
+    # Map each data point to a corresponding zone file by performing
+    # a mock-insert into the (local copy) of the global tree and storing
+    # the data point within
+
     open_files = set()
     for datum in np.nditer(data):
         # we are about to modify the datum, make a copy
         datum = datum.copy()
 
-        # pull out the RA and DEC
+        # pull out the RA and DEC and perform a mock insert into the global tree
         [ra, dec] = get_coords(datum)
         zone_id = tree.insert(ra, dec, None)
 
-        if zone_id not in data_dict.keys():
-            data_dict[zone_id] = list()
-
-        # update the zone ID and append it to the dictionary
+        # update the datum with its new zone ID
         datum['zone_id'] = zone_id
+
+        # move the data into the dictionary
         data_dict[zone_id].append(datum)
 
     return data_dict
 
+def write_mapping_info(save_dir, data_dict, mode="add"):
+    """
+    Valid modes are "add" or "remove"
+    """
+
+    num_zones = get_num_zones()
+    date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # sign to indicate addition or removal of data
+    sign = 1
+    if mode == "remove":
+        sign = -1
+
+    # write out the input to zone assignment information
+    mapping_data = list()
+    mapping_data.append(date)
+    mapping_data.append(filename)
+    mapping_data.append(data_dict['num_fred_data'])
+    for zone_id in range(0, num_zones):
+        num_data = data_dict[zone_id]
+        if num_data is None:
+            num_data = 0
+
+        num_data *= sign
+        mapping_data.append(num_data)
+
+    # convert the data to strings
+    mapping_data = map(str, mapping_data)
+
+    # write the data to file
+    zone_mapping_file = save_dir + '/' + 'zone_mapping.log'
+    with FileLock(zone_mapping_file, timeout=100, delay=0.05):
+        with open(zone_mapping_file, 'a+') as outfile:
+            outfile.write(','.join(mapping_data) + "\n")
 
 def add_fred(save_dir, filename):
     """Processes an APASS FRED file into zones using data contained in the tree"""
-
     print("Processing FRED file " + filename)
+
     impacted_zones = []
     data_dict = build_data_dict(filename)
 
-    if data_dict is not None:
-        # Write out the data being sure to lock all related files prior to opening
-        for zone_id, data in data_dict.iteritems():
-            zone_filename    = save_dir + '/' + name_zone_file(zone_id)
-            contrib_filename = save_dir + '/' + name_zone_contrib_file(zone_id)
+    # if there isn't any data, bail out early.
+    if data_dict is none:
+        return impacted_zones
 
-            with FileLock(zone_filename, timeout=100, delay=0.05):
-                with open(zone_filename, 'a+b') as outfile:
-                    for datum in data:
-                        outfile.write(datum)
+    # write the input data to zone mapping information to a file
+    write_mapping_info(save_dir, data_dict, mode="add")
 
-                with open(contrib_filename, 'a+') as outfile:
-                    outfile.write(filename + "\n")
+    # remove any data that is not for a zone
+    del data_dict['num_fred_data']
 
-            impacted_zones.append(zone_id)
+    # Write out the data being sure to lock all related files prior to opening
+    for zone_id, data in data_dict.iteritems():
+
+        # skip zones with no data
+        if len(data) == 0:
+            continue
+
+        zone_filename    = save_dir + '/' + name_zone_file(zone_id)
+        contrib_filename = save_dir + '/' + name_zone_contrib_file(zone_id)
+
+        with FileLock(zone_filename, timeout=100, delay=0.05):
+            with open(zone_filename, 'a+b') as outfile:
+                for datum in data:
+                    outfile.write(datum)
+
+            with open(contrib_filename, 'a+') as outfile:
+                outfile.write(filename + "\n")
+
+        impacted_zones.append(zone_id)
 
     print("Completed FRED file " + filename)
 
@@ -113,6 +182,13 @@ def remove_fred(filename):
     print("Processing FRED file " + filename)
     impacted_zones = []
     data_dict = build_data_dict(filename)
+
+    # if there isn't any data, bail out early.
+    if data_dict is none:
+        return impacted_zones
+
+    # write the input data to zone mapping information to a file
+    write_mapping_info(save_dir, data_dict, mode="remove")
 
     if data_dict is not None:
         # Write out the data being sure to lock all related files prior to opening
@@ -184,6 +260,21 @@ def main():
     # truncate the error log file
     with open(error_filename, 'w') as error_file:
         error_file.truncate()
+
+    # ensure the zone mapping file exists and is populated with a header
+    zone_mapping_file = args.save_dir + '/' + 'zone_mapping.log'
+    if not os.path.isfile(zone_mapping_file):
+        num_zones = get_num_zones()
+        header = list()
+        header.append('date')
+        header.append('fred_filename')
+        header.append('fred_num_values')
+        for i in range(0, num_zones):
+            header.append(i)
+
+        header = map(str, header)
+        with open(zone_mapping_file, 'w') as outfile:
+            outfile.write(','.join(header) + "\n")
 
     # Construct a partial to serve as the function to call in serial or
     # parallel mode below.

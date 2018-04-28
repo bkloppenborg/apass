@@ -23,6 +23,10 @@ num_filters = 6
 global_depth = 7 # dRA = 2.8125 (deg), dDEC = 1.40625 (deg)
 zone_depth = 3 # dRA = 0.35 (deg), dDEC = 0.175 (deg)
 
+# Left padding to be used when naming zone files. Calculate by counting
+# the characters in the maximum zone ID (i.e. 2**(2*global_depth) + 2)
+zone_file_padding = 5
+
 polar_zone_cutoff = 88 # |dec| greater than this are considered part of the polar zone
 # (static) IDs for the polar zones. Don't change these
 south_zone_id = 0
@@ -64,6 +68,14 @@ def get_coords(datum):
     ra  = datum['ra']
     return [ra, dec]
 
+def get_num_zones():
+    """Computes the maximum number of zones used by the tree. Depending if any
+    zones are merged, the real number of zones can be lower than this."""
+
+    num_zones = 2**(2*global_depth) + 2
+
+    return num_zones
+
 # store information in the following format
 #  zXXXXX.fredbin - zone file
 
@@ -100,7 +112,7 @@ def name_zone_json_file(zone_id):
 
 def name_container(zone_id, node_id, container_id):
     """Produces a unique name for the container given the zone, node, and container IDs"""
-    output = "z" + str(zone_id).zfill(5) + \
+    output = "z" + str(zone_id).zfill(zone_file_padding) + \
              "n" + str(node_id).zfill(5) + \
              "c" + str(container_id).zfill(5)
 
