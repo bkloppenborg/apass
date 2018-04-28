@@ -13,12 +13,15 @@ ccd_radius = 2500
 min_num_observations = 3
 num_filters = 6
 
-# Number of times the sphere is subdivided
-# this should be somewhat well matched to the polar_zone_cutoff below
-global_depth = 6 # dRA = 5.625 dDEC = 2.8125
-#global_depth = 7 # dRA = 2.8125 dDEC = 1.40625
-# number of times a zone is subdivided
-zone_depth = 4
+# Number of times the sphere is subdivided.
+# The global_depth defines the area occupied by a zone which, in turn,
+# determines the level of parallelism used within the pipeline.
+# The zone_depth determines the number of partitions within a zone
+# which accelerates creation of containers that store stellar data.
+#global_depth = 6 # dRA = 5.625 (deg), dDEC = 2.81250 (deg)
+#zone_depth = 4 # dRA = 0.35 (deg), dDEC = 0.175 (deg)
+global_depth = 7 # dRA = 2.8125 (deg), dDEC = 1.40625 (deg)
+zone_depth = 3 # dRA = 0.35 (deg), dDEC = 0.175 (deg)
 
 polar_zone_cutoff = 88 # |dec| greater than this are considered part of the polar zone
 # (static) IDs for the polar zones. Don't change these
