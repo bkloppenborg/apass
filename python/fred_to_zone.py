@@ -50,7 +50,7 @@ def build_data_dict(filename):
     global error_filename
 
     # create the data dictionary which will store data values.
-    data_dict = dict()
+    data_dict = make_data_dict()
 
     flag_read_error = False
 
@@ -100,7 +100,7 @@ def build_data_dict(filename):
 
     return data_dict
 
-def write_mapping_info(save_dir, data_dict, mode="add"):
+def write_mapping_info(save_dir, filename, data_dict, mode="add"):
     """
     Valid modes are "add" or "remove"
     """
@@ -143,11 +143,11 @@ def add_fred(save_dir, filename):
     data_dict = build_data_dict(filename)
 
     # if there isn't any data, bail out early.
-    if data_dict is none:
+    if data_dict is None:
         return impacted_zones
 
     # write the input data to zone mapping information to a file
-    write_mapping_info(save_dir, data_dict, mode="add")
+    write_mapping_info(save_dir, filename, data_dict, mode="add")
 
     # remove any data that is not for a zone
     del data_dict['num_fred_data']
@@ -188,7 +188,7 @@ def remove_fred(filename):
         return impacted_zones
 
     # write the input data to zone mapping information to a file
-    write_mapping_info(save_dir, data_dict, mode="remove")
+    write_mapping_info(save_dir, filename, data_dict, mode="remove")
 
     if data_dict is not None:
         # Write out the data being sure to lock all related files prior to opening
