@@ -40,8 +40,27 @@ def merge_polar_zones(root_node):
             leaf.rect.x_max = 360
 
 def number_zones(root_node):
+    """Assigns a unique ID to each zone following a raster-scan pattern"""
 
     counter = max(apass.north_zone_id, apass.south_zone_id) + 1
+
+    x_max = 2**apass.global_depth
+    y_max = 2**apass.global_depth
+
+    dx = 360.0 / x_max
+    dy = 180.0 / y_max
+
+    for j in range(0, y_max):
+        for i in range(0, x_max):
+
+            x = dx * i
+            y = dy * j - 90.0
+
+            node = root_node.find_leaf(x,y)
+
+            if node.node_id == None:
+                node.node_id = counter
+                counter += 1
 
     leaves = root_node.get_leaves()
     for leaf in leaves:
