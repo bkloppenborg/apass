@@ -7,7 +7,8 @@
 ####
 # Directory Configuration
 ####
-export DATA_DIR=/mnt/astro/astro/home/welch/surveys/APASS/hphot_and_hepp/
+#export DATA_DIR=/mnt/astro/astro/home/welch/surveys/APASS/hphot_and_hepp/
+export DATA_DIR=/mnt/astro/astro/home/welch/surveys/APASS/hphot_and_hepp/fixedk2_dtfred/
 export CACHE_DIR=/scratch/apass-dr10/
 export CODE_DIR=./python/
 export SAVE_DIR=/home/bkloppenborg-gmail_com/apass-dr10/
@@ -31,7 +32,7 @@ python ${CODE_DIR}/make_zones.py ${CACHE_DIR}
 python ${CODE_DIR}/fred_to_zone.py ${OPTS} ${DATA_DIR}/*.fred ${CACHE_DIR}
 python ${CODE_DIR}/zone_to_rects.py ${OPTS} ${CACHE_DIR}/*.fredbin
 python ${CODE_DIR}/fix_zone_overlaps.py ${OPTS} ${CACHE_DIR}
-#python ${CODE_DIR}/rect_to_dat.py ${OPTS} ${CACHE_DIR}/*-container.fredbin
+python ${CODE_DIR}/rect_to_dat.py ${OPTS} apass ${CACHE_DIR}/*-container.fredbin
 
 # print out timing statistics
 END=$(date +%s)
