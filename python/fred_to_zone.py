@@ -22,7 +22,7 @@ from apass import name_zone_file, name_zone_contrib_file, name_zone_file
 from apass import get_coords, get_num_zones
 
 # File I/O
-from fred import read_fred read_fredbin
+from fred import read_fred, read_fredbin
 
 import sys, os
 sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
