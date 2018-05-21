@@ -31,7 +31,7 @@ from filelock import FileLock
 def make_data_dict():
     """Constructs a data dictionary consisting of the following fields:
        num_fred_data - integer, number of values read in from FRED files
-       XXXXXX        - zone ID as key with data to be inserted into that zone as value
+       XXXXXX        - zone ID as key with data /mnt/astro/astro/home/welch/surveys/APASS/hphot_and_hepp/fixedk2_dtfred/s160201.fixedk2.dtfredto be inserted into that zone as value
     """
 
     out = dict()
@@ -185,7 +185,7 @@ def remove_fred(save_dir, filename):
     data_dict = build_data_dict(filename)
 
     # if there isn't any data, bail out early.
-    if data_dict is none:
+    if data_dict is None:
         return impacted_zones
 
     # write the input data to zone mapping information to a file
