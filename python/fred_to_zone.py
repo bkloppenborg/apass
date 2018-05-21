@@ -177,7 +177,7 @@ def add_fred(save_dir, filename):
 
     return impacted_zones
 
-def remove_fred(filename):
+def remove_fred(save_dir, filename):
     """Removes the data found in the specified file."""
 
     print("Processing FRED file " + filename)
