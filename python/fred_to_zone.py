@@ -22,7 +22,7 @@ from apass import name_zone_file, name_zone_contrib_file, name_zone_file
 from apass import get_coords, get_num_zones
 
 # File I/O
-from fred import read_fred, read_fredbin
+from fred import read_fred, read_fredbin, compare_fred_data
 
 import sys, os
 sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
@@ -223,7 +223,7 @@ def remove_fred(save_dir, filename):
                     if index >= num_data:
                         continue
 
-                    same_point = apass.compare_fred_data(datum, zone_data[index])
+                    same_point = compare_fred_data(datum, zone_data[index])
                     if same_point:
                         indices.append(index)
                         data_removed = True
