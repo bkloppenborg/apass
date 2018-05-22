@@ -203,7 +203,11 @@ def remove_fred(save_dir, filename):
             contrib_filename = save_dir + '/' + name_zone_contrib_file(zone_id)
 
             with FileLock(zone_filename):
-                zone_data = read_fredbin(zone_filename)
+                try:
+                    zone_data = read_fredbin(zone_filename)
+                except:
+                    print("Warning, could not find zone %i" % (zone_id))
+                    continue
 
                 zone_data = np.sort(zone_data, order=['ra', 'dec'])
                 num_data = len(zone_data)
