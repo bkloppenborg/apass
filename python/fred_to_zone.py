@@ -191,6 +191,9 @@ def remove_fred(save_dir, filename):
     # write the input data to zone mapping information to a file
     write_mapping_info(save_dir, filename, data_dict, mode="remove")
 
+    # remove any data that is not for a zone
+    del data_dict['num_fred_data']
+
     if data_dict is not None:
         # Write out the data being sure to lock all related files prior to opening
         for zone_id, data in data_dict.iteritems():
