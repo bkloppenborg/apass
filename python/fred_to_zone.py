@@ -195,6 +195,9 @@ def remove_fred(save_dir, filename):
         # Write out the data being sure to lock all related files prior to opening
         for zone_id, data in data_dict.iteritems():
 
+            if len(data) == 0:
+                continue
+
             # print out a message to inform the user of progress.
             print("Checking zone %i" % (zone_id))
             data_removed = False
