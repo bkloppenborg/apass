@@ -75,6 +75,9 @@ def read_fred_manual(filename):
             # initial checks are ok. Append the data.
             data.append(line)
 
+    if len(data) == 0:
+        return None
+
     if flag_missing_columns:
         print("WARNING: %s is missing required columns" % (filename))
 
@@ -84,7 +87,8 @@ def read_fred_manual(filename):
 
 def read_fred(filename):
     """Reads in an APASS FRED file and returns the result as a numpy structured
-    array with columns as specified in fred_col_names plus fredbin.fredbin_extra_cols"""
+    array with columns as specified in fred_col_names plus fredbin.fredbin_extra_cols.
+    In rare situations, this function can return None."""
     dtype={'names': fred_col_names,'formats': fred_col_types}
     data = []
 

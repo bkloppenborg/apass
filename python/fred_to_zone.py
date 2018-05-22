@@ -70,6 +70,10 @@ def build_data_dict(filename):
         print("ERROR: File %s has an unknown error and was not parsed" % (filename))
         flag_read_error = True
 
+    # skip empty files
+    if data is None:
+        return None
+
     if flag_read_error:
         with FileLock(error_filename, timeout=100, delay=0.05):
             with open(error_filename, 'a') as error_file:
