@@ -202,7 +202,7 @@ def remove_fred(save_dir, filename):
                 continue
 
             # print out a message to inform the user of progress.
-            print("Checking zone %i" % (zone_id))
+            #print("Checking zone %i" % (zone_id))
             data_removed = False
 
             zone_filename    = save_dir + '/' + name_zone_file(zone_id)
@@ -231,7 +231,7 @@ def remove_fred(save_dir, filename):
                         indices.append(index)
                         data_removed = True
 
-                print("Deleting %i entries from zone %i" % (len(indices), zone_id))
+                #print("Deleting %i entries from zone %i" % (len(indices), zone_id))
                 zone_data = np.delete(zone_data, indices)
 
                 # write the file
