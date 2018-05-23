@@ -71,7 +71,7 @@ def build_data_dict(filename):
         flag_read_error = True
 
     # skip empty files
-    if data is None:
+    if data is None or len(data) == 0:
         return None
 
     if flag_read_error:
