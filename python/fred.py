@@ -99,6 +99,9 @@ def read_fred(filename):
         # if this fails, try parsing manually
         data = read_fred_manual(filename)
 
+    if data is None:
+        return None
+
     num_rows = len(data)
 
     night_name = night_from_filename(filename)
