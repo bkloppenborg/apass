@@ -58,6 +58,7 @@ def build_data_dict(filename):
     tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
 
     # read the fred file into a numpy array
+    data = None
     try:
         data = read_fred(filename)
     except ValueError:
@@ -71,7 +72,9 @@ def build_data_dict(filename):
         flag_read_error = True
 
     # skip empty files
-    if data is None or len(data) == 0:
+    if data is None:
+        return None
+    if len(data) == 0:
         return None
 
     if flag_read_error:
