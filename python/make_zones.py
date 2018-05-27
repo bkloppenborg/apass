@@ -76,22 +76,29 @@ def export_rect(node):
 
 def plot_zones(save_dir, tree):
     """Plots leaf zones found in the global rects variable"""
-    tree.runFunc(export_rect)
-    bounds = tree.rect
-    xlim = [bounds.x_min, bounds.x_max]
-    ylim = [bounds.y_min, bounds.y_max]
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(120,100))
     axes = plt.gca()
-    axes.set_xlim(xlim)
-    axes.set_ylim(ylim)
+    axes.set_xlim([0,360])
+    axes.set_ylim([-90,90])
 
-    for rect in rects:
-        x = rect.x_min
-        y = rect.y_min
-        width = rect.x_max - rect.x_min
-        height = rect.y_max -  rect.y_min
-        axes.add_patch(patches.Rectangle((x,y), width, height, fill=False))
+    leaves = tree.get_leaves()
+    for leaf in leaves:
+        # extract the bounds of this leaf
+        x_min = leaf.rect.x_min
+        x_max = leaf.rect.x_max
+        y_min = leaf.rect.y_min
+        y_max = leaf.rect.y_max
+
+        # calculate the width, height, and center
+        width  = x_max - x_min
+        height = y_max -  y_min
+        center_x = (x_max + x_min) / 2
+        center_y = (y_max + y_min) / 2
+
+        # plot a rectangle for this zone and number it
+        axes.add_patch(patches.Rectangle((x_min,y_min), width, height, fill=False))
+        axes.text(center_x, center_y, leaf.node_id)
 
     plt.savefig(save_dir + "/global.png")
 
