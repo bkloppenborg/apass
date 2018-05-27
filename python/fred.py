@@ -11,8 +11,18 @@ from copy import copy
 # FILCON ver 3.3
 # RA (J2000)    DEC        CCDX      CCDY  Flags   HJD      Airmass   Set      Group   Object                   Filt   Mag    Error    dmag    sys night
 # 105.4134694   0.6743509  2996.030    31.010 0 0 56029.599560 1.310    1          2 10040L                        8  16.5515  0.2880  0.0391   232 56029
-fred_col_names = ['ra', 'dec', 'ccdx', 'ccdy', 'flag1', 'flag2', 'hjd', 'airmass', 'set', 'group', 'field_id', 'filter_id', 'xmag1', 'xerr1', 'dmag', 'sys', 'night', 'exposure_time']
-fred_col_types = ['float64', 'float64', 'float32', 'float32', 'bool', 'bool', 'float32', 'float32', 'int32', 'int32', 'S25', 'uint8', 'float32', 'float32', 'float32', 'int32', 'int32', 'float32']
+fred_col_names  = ['ra',       'dec',      'ccdx',    'ccdy',    'flag1',
+                   'flag2', 'hjd',     'airmass', 'set',   'group', 'field_id',
+                   'filter_id', 'xmag1',   'xerr1',   'dmag',    'sys',
+                   'night', 'exposure_time']
+fred_col_types  = ['float64',  'float64',  'float32', 'float32', 'bool',
+                   'bool',  'float32', 'float32', 'int32', 'int32', 'S25',
+                   'uint8',     'float32', 'float32', 'float32', 'int32',
+                   'int32', 'float32']
+fredbin_col_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d',
+                   '%d',    '%02.6f',  '%02.6f',  '%6i',   '%6i',   '%11s',
+                   '%03i',      '%02.6f',  '%02.6f',  '%+02.6f', '%6i',
+                   '%6i',   '%02.6f']
 
 # fredbin follows the same format as fred, but also has columns for 'rect' and 'container'
 fredbin_col_names = copy(fred_col_names)
@@ -21,7 +31,8 @@ fredbin_col_names.extend(fredbin_extra_col_names)
 fredbin_col_types = copy(fred_col_types)
 fredbin_extra_col_types = ['int32', 'int32', 'int32', 'S7']
 fredbin_col_types.extend(fredbin_extra_col_types)
-fredbin_col_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d', '%d', '%02.6f', '%02.6f', '%6i', '%6i', '%11s', '%03i', '%02.6f', '%02.6f', '%+02.6f', '%6i', '%6i', '%6i', '%6i', '%6i', '%7s']
+fredbin_extra_col_fmt   = ['%6i',   '%6i',   '%6i',   '%7s']
+fredbin_col_fmt.extend(fredbin_extra_col_fmt)
 
 def night_from_filename(filename):
     filename = os.path.basename(filename)
@@ -125,4 +136,5 @@ def write_txt(fredbin_data, filename):
     header += "Column names: "   + ','.join(fredbin_col_names) + "\n"
     header += "Column types: "   + ','.join(fredbin_col_types) + "\n"
     header += "Column formats: " + ','.join(fredbin_col_fmt)   + "\n"
+
     np.savetxt(filename + ".txt", fredbin_data, header=header, fmt=fredbin_col_fmt)
