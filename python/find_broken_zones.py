@@ -9,7 +9,7 @@ import os
 # local includes
 from quadtree import *
 from quadtree_types import *
-from apass import name_zone
+from apass import name_zone, north_zone_id, south_zone_id
 
 expected_extensions = [
     ".fredbin"
@@ -39,37 +39,32 @@ def main():
     tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
 
     # find the broken zones
-    broken_zones = []
-    zone_0_checked = False
-    zone_1_checked = False
+    poles_checked = [False, False]
     leaves = tree.get_leaves()
     for leaf in leaves:
         zone_id = leaf.node_id
-
-        if zone_id == 0 and zone_0_checked:
-            continue
-        else:
-            zone_0_checked = True
-
-        if zone_id == 1 and zone_1_checked:
-            continue
-        else:
-            zone_1_checked = True
-
         zone_name = name_zone(zone_id)
 
+        # The north/south zone IDs appear multiple times in the tree.
+        # Ensure we only visit these once.
+        if zone_id == south_zone_id or zone_id == north_zone_id:
+            if poles_checked[zone_id]:
+                continue
+            else:
+                poles_checked[zone_id] = True
+
+        # determine which, if any, files are missing for this zone:
+        missing_extensions = []
         for extension in expected_extensions:
             filename = save_dir + zone_name + extension
 
             if filename in saved_files:
                 saved_files.remove(filename)
             else:
-                broken_zones.append(zone_name)
-                print zone_name
-                break
+                missing_extensions.append(extension)
 
-
-
+        if len(missing_extensions) > 0:
+            print str(zone_id) + ": " + ", ".join(missing_extensions)
 
 if __name__ == "__main__":
     main()
