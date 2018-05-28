@@ -11,6 +11,7 @@ from quadtree import *
 from quadtree_types import *
 from apass import name_zone, north_zone_id, south_zone_id
 
+# these are file extensions we expect to find in the save directory
 expected_extensions = [
     ".fredbin",              # stage 1
     "-contrib.txt",          # stage 1
@@ -18,7 +19,6 @@ expected_extensions = [
     "-border-rects.json",    # stage 2
     ".dat"                   # stage 3
 ]
-
 
 def main():
 
@@ -79,7 +79,8 @@ def main():
         missing_files = stages[extension]
         if len(missing_files) > 0:
             print("The earliest files missing are %s." % (extension))
-            print("Run the appropriate stage on the files in 'missing.txt'")
+            print("Modify the 'missing.txt' file for the previous stage input " +
+                  "files and run the corresponding stage of the pipeline")
             with open(missing_file, 'w') as outfile:
                 for filename in missing_files:
                     outfile.write(filename + "\n")
