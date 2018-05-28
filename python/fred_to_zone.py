@@ -11,6 +11,7 @@ from functools import partial
 import time
 import traceback
 import datetime
+import traceback
 
 # parallel processing
 import multiprocessing as mp
@@ -80,7 +81,10 @@ def build_data_dict(filename):
     if flag_read_error:
         with FileLock(error_filename, timeout=100, delay=0.05):
             with open(error_filename, 'a') as error_file:
-                error_file.write("ERROR: Cannot parse %s" % (filename))
+                message = "ERROR: Cannot parse %s" % (filename)
+                error_file.write(message)
+                print message
+
         return None
 
     # update the number of data points read.
@@ -253,7 +257,27 @@ def remove_fred(save_dir, filename):
 
     return impacted_zones
 
+def fred_to_zone(proc_func, save_dir, filename):
+    """Wrapper function for adding/removing FRED files that includes exception
+    handling and logging"""
+
+    global error_filename
+
+    try:
+        proc_func(save_dir, filename)
+    except:
+        message = "ERROR: Failed to import %s. Re-run in debug mode\n" % (filename)
+        tb = traceback.format_exc()
+
+        print(message)
+        with FileLock(error_filename, timeout=100, delay=0.05):
+            with open(error_filename, 'a') as error_file:
+                error_file.write(message + "\n" + str(tb) + "\n")
+
 def main():
+
+    global error_filename
+    global tree_file
 
     parser = argparse.ArgumentParser(description='Parses .fred files into zone .fredbin files')
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
@@ -268,12 +292,9 @@ def main():
     args = parser.parse_args()
     start = time.time()
 
-    # load the global tree
-    global tree_file
-    tree_file = args.save_dir + "/global.json"
-
-    global error_filename
+    # load globals
     error_filename = args.save_dir + "/fred_to_zone.errorlog"
+    tree_file = args.save_dir + "/global.json"
 
     # truncate the error log file
     with open(error_filename, 'w') as error_file:
@@ -296,9 +317,9 @@ def main():
 
     # Construct a partial to serve as the function to call in serial or
     # parallel mode below.
-    fred_func = partial(add_fred, args.save_dir)
+    fred_func = partial(fred_to_zone, add_fred, args.save_dir)
     if args.remove:
-        fred_func = partial(remove_fred, args.save_dir)
+        fred_func = partial(fred_to_zone, remove_fred, args.save_dir)
 
     # set up the pool and launch the function
     results = []

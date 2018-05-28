@@ -412,7 +412,6 @@ def zone_to_dat(proc_func, save_dir, zone_container_filename):
 
     global error_filename
 
-    proc_func(save_dir, zone_container_filename)
     try:
         proc_func(save_dir, zone_container_filename)
     except:

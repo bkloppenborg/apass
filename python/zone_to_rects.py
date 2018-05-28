@@ -15,6 +15,7 @@ from multiprocessing import Pool
 from threading import Lock
 import signal
 from functools import partial
+import traceback
 
 # APASS-specific things
 from quadtree import *
@@ -24,6 +25,22 @@ import apass
 from fred import read_fredbin
 from border_info import make_border_info, save_border_info
 import zone
+
+def zone_to_rects_wrapper(proc_func, save_dir, filename):
+    """Wrapper function that includes exception handling and logging"""
+
+    global error_filename
+
+    try:
+        proc_func(save_dir, filename)
+    except:
+        message = "ERROR: Failed to process %s. Re-run in debug mode.\n" % (filename)
+        tb = traceback.format_exc()
+
+        print(message)
+        with FileLock(error_filename, timeout=100, delay=0.05):
+            with open(error_filename, 'a') as error_file:
+                error_file.write(message + "\n" + str(tb) + "\n")
 
 def zone_to_rects(save_dir, filename):
     """Processes and APASS zone file into overlapping rectangles"""
@@ -101,7 +118,8 @@ def merge_containers_on_borders(zone_tree):
                 adj_leaves = get_containing_nodes(leaf, container)
 
             # remove self references
-            adj_leaves.remove(leaf)
+            if leaf in adj_leaves:
+                adj_leaves.remove(leaf)
 
             for adj_leaf in adj_leaves:
                 if adj_leaf is None:
@@ -246,6 +264,9 @@ def plot_rects(tree):
 
 def main():
 
+    global error_filename
+    global tree_file
+
     parser = argparse.ArgumentParser(description='Merges .fred photometric files')
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
@@ -258,12 +279,13 @@ def main():
 
     save_dir = os.path.dirname(os.path.realpath(args.input[0]))
 
-    global tree_file
+    # configure globals
+    error_filename = save_dir + "zone_to_rects.errorlog"
     tree_file = save_dir + "/global.json"
 
     # Construct a partial to serve as the function to call in serial or
     # parallel mode below.
-    ztr_func = partial(zone_to_rects, save_dir)
+    ztr_func = partial(zone_to_rects_wrapper, zone_to_rects, save_dir)
 
     # use this for single thread development and debugging
     if args.debug:
