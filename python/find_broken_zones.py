@@ -22,7 +22,7 @@ expected_extensions = [
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Parses .fred files into zone .fredbin files')
+    parser = argparse.ArgumentParser(description='Identifies the state of the pipeline for each zone')
     parser.add_argument('save_dir', help="Directory where save files can be found")
 
     # parse the command line arguments and start timing the script
