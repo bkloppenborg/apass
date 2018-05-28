@@ -12,11 +12,11 @@ from quadtree_types import *
 from apass import name_zone, north_zone_id, south_zone_id
 
 expected_extensions = [
-    ".fredbin",
-    "-contrib.txt",
-    "-container.fredbin",
-    "-border-rects.json",
-    ".dat"
+    ".fredbin",              # stage 1
+    "-contrib.txt",          # stage 1
+    "-container.fredbin",    # stage 2
+    "-border-rects.json",    # stage 2
+    ".dat"                   # stage 3
 ]
 
 
@@ -37,6 +37,11 @@ def main():
 
     # load the zone quadtree
     tree = QuadTreeNode.from_file(tree_file, leafClass=IDLeaf)
+
+    # init a structure to store stage -> zone mapping information
+    stages = dict()
+    for extension in expected_extensions:
+        stages[extension] = []
 
     # find the broken zones
     poles_checked = [False, False]
@@ -62,9 +67,23 @@ def main():
                 saved_files.remove(filename)
             else:
                 missing_extensions.append(extension)
+                stages[extension].append(filename)
 
         if len(missing_extensions) > 0:
+            # print a message on the console
             print str(zone_id) + ": " + ", ".join(missing_extensions)
+
+
+    missing_file = save_dir + '/missing.txt'
+    for extension in expected_extensions:
+        missing_files = stages[extension]
+        if len(missing_files) > 0:
+            print("The earliest files missing are %s." % (extension))
+            print("Run the appropriate stage on the files in 'missing.txt'")
+            with open(missing_file, 'w') as outfile:
+                for filename in missing_files:
+                    outfile.write(filename + "\n")
+            break
 
 if __name__ == "__main__":
     main()
