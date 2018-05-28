@@ -125,9 +125,9 @@ def read_dat(filename, dat_type="apass"):
     dtype={'names': dat_col_names, 'formats': dat_col_types}
     data = np.loadtxt(filename, dtype=dtype)
 
-    # convert ra/dec errors from arcmin to deg
-    data['ra_sig']  /= 60
-    data['dec_sig'] /= 60
+    # convert ra/dec errors from arcseconds to deg
+    data['ra_sig']  /= 3600
+    data['dec_sig'] /= 3600
     # convert container sizes to arcseconds (or square arcseconds)
     data['container_width']  /= (3600)
     data['container_height'] /= (3600)
@@ -140,9 +140,9 @@ def write_dat(filename, data, dat_type="apass"):
 
     dat_col_names, dat_col_types, dat_col_fmt = select_format(dat_type)
 
-    # convert RA/DEC errors to arcmin
-    data['ra_sig']  *= 60
-    data['dec_sig'] *= 60
+    # convert RA/DEC errors to arcseconds
+    data['ra_sig']  *= 3600
+    data['dec_sig'] *= 3600
     # convert container sizes to arcseconds (or square arcseconds)
     data['container_width']  *= (3600)
     data['container_height'] *= (3600)
