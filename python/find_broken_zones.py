@@ -12,7 +12,7 @@ from quadtree_types import *
 from apass import name_zone, north_zone_id, south_zone_id
 
 expected_extensions = [
-    ".fredbin"
+    ".fredbin",
     "-contrib.txt",
     "-container.fredbin",
     "-border-rects.json",
