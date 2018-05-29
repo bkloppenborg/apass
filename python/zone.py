@@ -89,7 +89,11 @@ def load_zone(save_dir, zone_id):
     #print zone_border_info_file
 
     lock = FileLock(zone_container_file)
-    lock.acquire()
+    try:
+        lock.acquire()
+    except FileLockException:
+        print("ERROR: Failed to get lock on zone %i, check for stale lockfiles!" % (zone_id))
+        quit()
 
     # verify the necessary files exist, if not bail
     if not os.path.isfile(zone_json_file):
