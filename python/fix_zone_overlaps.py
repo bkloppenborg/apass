@@ -205,6 +205,10 @@ def fix_overlaps(save_dir, zone_id, adjacent_zone_ids):
         node_id = node.node_id
         container = node.get_container(x,y)
 
+        # verify that there is a matching container in the other zone
+        if container is None:
+            continue
+
         # produce a nice name for this container
         dest_name = apass.name_container(container.zone_id,
                                          container.node_id,
