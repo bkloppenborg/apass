@@ -205,11 +205,8 @@ def fix_overlaps(save_dir, zone_id, adjacent_zone_ids):
         node_id = node.node_id
         container = node.get_container(x,y)
 
-        # verify that the container still exists, it could have been removed
-        # by an adjacent zone.
+        # verify that there is a matching container in the other zone
         if container is None:
-            # remove this entry from the border list
-            del border_infos[key]
             continue
 
         # produce a nice name for this container
