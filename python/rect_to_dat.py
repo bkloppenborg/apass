@@ -22,6 +22,7 @@ from quadtree_types import *
 import fred
 import dat
 import zone
+import badfiles
 
 # lockfile
 import sys, os
@@ -59,41 +60,81 @@ sro_min_num_observations = 3
 
 def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius,
                          min_num_observations = 3):
-    """Filters """
+    """Sets the 'use_data' flag to False for any stars that reside OUTSIDE
+    of a specified radius from the CCD center provided that a minimum number
+    of observations remain. Returns the modified data array"""
 
     # filter out measurements outside of a specific radius from the center
     # of the CCD
-    radius = (max_ccd_radius)**2
-    radius_2 = radius*radius
+    max_radius_2 = (max_ccd_radius)**2
 
     # Compute the (x,y) location of the stars relative to the center of the CCD
     x = data['ccdx'] - x_center
     y = data['ccdy'] - y_center
     ccd_radius_2 = x*x + y*y
 
-    # filter by CCD radius these data are always used
-    indexes = np.where(ccd_radius_2 < radius_2)
-    data['use_data'][indexes] = True
+    # determine measurements that reside OUTSIDE of the maximum allowable radius
+    radius_indices = np.where(ccd_radius_2 > max_radius_2)
 
-    # if there are fewer than 'min_num_observations' in a given photometric filter,
-    # restore the observations.
     filter_ids = set(data['filter_id'])
     for filter_id in filter_ids:
-        indexes = np.where(data['filter_id'] == filter_id)
-        temp = data[indexes]
-        if sum(temp['use_data']) < min_num_observations:
-            data['use_data'][indexes] = True
+        # find measurements in this filter
+        filter_indices = np.where(data['filter_id'] == filter_id)
+        # find measurements outside of the maximum radius
+
+        # determine the measurements that could be flagged bad
+        bad_indices = np.intersect1d(filter_indices, radius_indices)
+        num_bad = len(bad_indices)
+        num_good = len(filter_indices) - num_bad
+
+        # If the minimum number of observations remains after flagging,
+        # set the 'use_data' flag to False for the bad indices.
+        # Otherwise leave the data untouched.
+        if num_good > min_num_observations:
+            data['use_data'][bad_indices] = False
 
     return data
 
-def filter_by_photometric_nights(data):
-    """Sets the 'use_data' flag to true on photometric nights"""
+def filter_by_non_photometric_nights(data):
+    """Sets the 'use_data' flag to False for nights that are identified as
+    being non-photometric in the raw FRED fields. Returns the modified data array"""
 
-    indexes = np.where(data['flag1'] == 0)
-    data['use_data'][indexes] = True
+    indexes = np.where(data['flag1'] == 1)
+    data['use_data'][indexes] = False
 
     return data
 
+def filter_by_bad_nights(data, bad_nights):
+    """Sets the 'use_data' flag to False for nights that are identified as
+    bad nights.
+    Input:
+    data - numpy array loaded using fred.read_fredbin
+    bad_nights - numpy array loaded using badfiles.read_bad_nights
+
+    Returns:
+    modified numpy array in fredbin format
+    """
+
+    for i in range(0, len(bad_nights)):
+        bad_night = bad_nights['night_name'][i]
+
+        indexes = np.where(data['night_name'] == bad_night)
+        data['use_data'][indexes] = False
+
+    return data
+
+def filter_by_bad_night_fields(data, bad_night_fields):
+    """Sets the 'use_data' flag to False for fields on specific nights that
+    have been identified as bad.  Returns the modified data array"""
+
+    for i in range(0, len(bad_night_fields)):
+        bad_night    = bad_night_fields['night_name'][i]
+        bad_field_id = bad_night_fileds['field_id'][i]
+
+        indexes = np.where((data['night_name'] == bad_night) & (data['field_id'] == bad_field_id))
+        data['use_data'][indexes] = False
+
+    return data
 
 def average_by_field(container,
                      ccd_x_center,
@@ -205,6 +246,14 @@ def average_container(container,
 
     global filter_ids
     global filter_names
+    global bad_nights       # numpy array with night_names that are known to be bad
+    global bad_night_fields # numpy array with known bad (night_id,field_id) pairs
+
+    if bad_nights is None:
+        bad_nights = []
+
+    if bad_night_fields is None:
+        bad_night_fields = []
 
     # A container should store data on precisely one star, but that data will
     # be taken through multiple photometric filters and potentially originate from
@@ -218,10 +267,6 @@ def average_container(container,
     data = container.data
     dtype={'names': fred.fredbin_col_names,'formats': fred.fredbin_col_types}
     data = np.asarray(container.data, dtype=dtype)
-
-    # add a boolean column to serve as a flag for whether or not a given datum should be used
-    tmp = np.zeros(len(data))
-    data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
 
     # if there is no data in the container or it has been moved, return an empty dictionary.
     if len(data) == 0:
@@ -242,10 +287,20 @@ def average_container(container,
     output['container_area']   = output['container_width'] * output['container_height']
 
     ##
-    # Filtering Stages
+    # Filtering Stages.
     ##
 
-    data = filter_by_photometric_nights(data)
+    # By default, assume the data SHOULD be included by initializing the
+    # 'use_data' field to True
+    tmp = np.ones(len(data))
+    data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
+
+    # Apply individual filters.
+    # Any given filter should ONLY set 'use_data' flags to False to avoid
+    # impacting other filters.
+    data = filter_by_bad_nights(data, bad_nights)
+    data = filter_by_bad_night_fields(data, bad_night_fields)
+    data = filter_by_non_photometric_nights(data)
 
     data = filter_by_ccd_radius(data, ccd_x_center, ccd_y_center, max_ccd_radius,
                                 min_num_observations = min_num_observations)
@@ -422,7 +477,18 @@ def apass_zone_to_dat(save_dir, zone_container_filename):
 def zone_to_dat(proc_func, save_dir, zone_container_filename):
     """Wrapper function that includes exception handling and logging"""
 
+    # input globals
     global error_filename
+    global bad_nights_filename
+    global bad_night_fields_filename
+
+    # output globals
+    global bad_nights
+    global bad_night_fields
+
+    # load remaining globals
+    bad_nights       = badfiles.read_bad_nights(bad_nights_filename)
+    bad_night_fields = badfiles.read_bad_night_fields(bad_night_fields_filename)
 
     try:
         proc_func(save_dir, zone_container_filename)
@@ -441,11 +507,17 @@ def main():
         description="Converts a containerized zone into APASS photometric output")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('format', type=str, default="apass", choices=valid_formats)
+    parser.add_argument('bad_night_file', type=str,
+                        help="File containing known bad nights")
+    parser.add_argument('bad_night_field_file', type=str,
+                        help="File containing known bad fields on specific nights")
     parser.add_argument('input', nargs='+')
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
 
     global error_filename
+    global bad_nights_filename
+    global bad_night_fields_filename
 
     # Parse the arguments and start timing the script.
     args = parser.parse_args()
@@ -460,6 +532,9 @@ def main():
         os.remove(error_filename)
     except:
         pass
+
+    bad_nights_filename       = args.bad_night_file
+    bad_night_fields_filename = args.bad_night_field_file
 
     # select the zone-to-dat function
     # by default, assume APASS format data
