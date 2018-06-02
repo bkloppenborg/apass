@@ -11,6 +11,8 @@ from copy import copy
 # FILCON ver 3.3
 # RA (J2000)    DEC        CCDX      CCDY  Flags   HJD      Airmass   Set      Group   Object                   Filt   Mag    Error    dmag    sys night
 # 105.4134694   0.6743509  2996.030    31.010 0 0 56029.599560 1.310    1          2 10040L                        8  16.5515  0.2880  0.0391   232 56029
+
+# set column names. Note, 'flag1' == 1 -> non-photometric night
 fred_col_names  = ['ra',       'dec',      'ccdx',    'ccdy',    'flag1',
                    'flag2', 'hjd',     'airmass', 'set',   'group', 'field_id',
                    'filter_id', 'xmag1',   'xerr1',   'dmag',    'sys',

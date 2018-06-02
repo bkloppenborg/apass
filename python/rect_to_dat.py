@@ -49,7 +49,7 @@ apass_filter_ids = dat.filter_ids(dat_type="apass")
 apass_filter_names = dat.filter_names(dat_type="apass") # however we write out V, (B-V), B, sg, sr, si)
 apass_min_num_observations = 3
 
-# configuration settings for SRO
+# configuration settings for SWith flag1 being the "non-photometric" flag, RO
 sro_ccd_x_center = 2048 # pixels
 sro_ccd_y_center = 2048 # pixels
 sro_max_ccd_radius = 3072.0 / 2
@@ -85,6 +85,15 @@ def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius,
             data['use_data'][indexes] = True
 
     return data
+
+def filter_by_photometric_nights(data):
+    """Sets the 'use_data' flag to true on photometric nights"""
+
+    indexes = np.where(data['flag1'] == 0)
+    data['use_data'][indexes] = True
+
+    return data
+
 
 def average_by_field(container,
                      ccd_x_center,
@@ -235,6 +244,9 @@ def average_container(container,
     ##
     # Filtering Stages
     ##
+
+    data = filter_by_photometric_nights(data)
+
     data = filter_by_ccd_radius(data, ccd_x_center, ccd_y_center, max_ccd_radius,
                                 min_num_observations = min_num_observations)
 
