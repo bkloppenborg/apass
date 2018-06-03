@@ -160,7 +160,7 @@ def to_freddat(fredbin_data):
     data = np.copy(fredbin_data)
 
     # insert weights
-    tmp = np.zeros(len(data))
+    tmp = np.ones(len(data))
     data = nprf.append_fields(data, ['weight'], [tmp], dtypes=['float32'], usemask=False)
 
     # insert the 'use_data' field with all data enabled by default
