@@ -50,7 +50,7 @@ apass_filter_ids = dat.filter_ids(dat_type="apass")
 apass_filter_names = dat.filter_names(dat_type="apass") # however we write out V, (B-V), B, sg, sr, si)
 apass_min_num_observations = 3
 
-# configuration settings for SWith flag1 being the "non-photometric" flag, RO
+# configuration settings for SRO
 sro_ccd_x_center = 2048 # pixels
 sro_ccd_y_center = 2048 # pixels
 sro_max_ccd_radius = 3072.0 / 2
@@ -58,16 +58,53 @@ sro_filter_ids = dat.filter_ids(dat_type="sro")
 sro_filter_names = dat.filter_names(dat_type="sro") # however we write out V, (B-V), B, sg, sr, si)
 sro_min_num_observations = 3
 
-def apply_filters(data, ccd_x_center, ccd_y_center, max_ccd_radius,
-                  min_num_observations = 3):
+class filter_config_data:
 
-    global bad_nights       # numpy array with night_names that are known to be bad
-    global bad_night_fields # numpy array with known bad (night_id,field_id) pairs
+    def __init__(self):
+        self.dat_type                  = None
+        self.ccd_x_center              = None
+        self.ccd_y_center              = None
+        self.max_ccd_radius            = None
+        self.min_num_observations      = None
+        self.bad_night_filename        = None
+        self.bad_night_field_filename  = None
+
+    def load_apass_defaults(self):
+        self.dat_type             = 'apass'
+        self.ccd_x_center         = apass_ccd_x_center
+        self.ccd_y_center         = apass_ccd_y_center
+        self.max_ccd_radius       = apass_max_ccd_radius
+        self.min_num_observations = apass_min_num_observations
+        self.filter_ids           = apass_filter_ids
+        self.filter_names         = apass_filter_names
+
+    def load_sro_defaults(self):
+        self.dat_type             = 'sro'
+        self.ccd_x_center         = sro_ccd_x_center
+        self.ccd_y_center         = sro_ccd_y_center
+        self.max_ccd_radius       = sro_max_ccd_radius
+        self.min_num_observations = sro_min_num_observations
+        self.filter_ids           = sro_filter_ids
+        self.filter_names         = sro_filter_names
+
+def apply_filters(data, filter_config):
+
+    # extract filter configuration information
+    ccd_x_center              = filter_config.ccd_x_center
+    ccd_y_center              = filter_config.ccd_y_center
+    max_ccd_radius            = filter_config.max_ccd_radius
+    min_num_observations      = filter_config.min_num_observations
+    bad_night_filename        = filter_config.bad_night_filename
+    bad_night_field_filename  = filter_config.bad_night_field_filename
+
+    # load bad night data
+    bad_nights        = badfiles.read_bad_nights(bad_night_filename)
+    bad_nights_fields = badfiles.read_bad_night_fields(bad_night_field_filename)
 
     # Any given filter should ONLY set 'use_data' flags to False to avoid
     # impacting other filters.
     data = filter_bad_nights(data, bad_nights)
-    data = filter_bad_night_fields(data, bad_night_fields)
+    data = filter_bad_night_fields(data, bad_nights_fields)
     data = filter_non_photometric_nights(data)
 
     data = filter_ccd_radius(data, ccd_x_center, ccd_y_center, max_ccd_radius,
@@ -153,12 +190,7 @@ def filter_bad_night_fields(data, bad_night_fields):
 
     return data
 
-def average_by_field(container,
-                     ccd_x_center,
-                     ccd_y_center,
-                     max_ccd_radius,
-                     min_num_observations,
-                     dat_type="sro"):
+def average_by_field(container, filter_config):
     """Parses the measurements within a container and averages the data by field.
 
     This function returns a nested dictionary whose keys are the field IDs and values
@@ -184,29 +216,26 @@ def average_by_field(container,
         t_data = data[indexes]
         t_container = RectContainer(x, y, t_data, zone_id, node_id, cont_id)
         t_container.rect = container.rect
-        ave_data = average_container(t_container,
-                                     ccd_x_center,
-                                     ccd_y_center,
-                                     max_ccd_radius,
-                                     min_num_observations,
-                                     dat_type=dat_type)
+        ave_data = average_container(t_container, filter_config)
         output.append(ave_data)
 
     return output
 
-def compute_weights(data, filter_id):
-    """Computes weights associated with APASS data"""
+def compute_weights(data):
+    """Computes the weights for APASS data. The data array should be
+    a numpy array of type freddat. See fred.to_freddat for more information."""
 
-    weights = np.ones(len(data))
+    """Computes weights associated with APASS data"""
 
     num_obs = len(data)
 
-    #try:
     for i in range(0, num_obs):
-        exptime  = data[i]['exposure_time']
-        mag      = data[i]['xmag1']
-        sig      = data[i]['xerr1']
-        weight   = weights[i]
+        exptime   = data[i]['exposure_time']
+        mag       = data[i]['xmag1']
+        sig       = data[i]['xerr1']
+        filter_id = data[i]['filter_id']
+
+        weight = 1
 
         # here we use the raw filter numbers
         if filter_id in [7, 11, 13, 14]: # su, sz, ZS, Y
@@ -239,21 +268,12 @@ def compute_weights(data, filter_id):
             weight = 1
 
         # update the weight
-        weights[i] = weight
+        data[i]['weight'] = weight
 
-    #except:
-    #    # reset the weights to all ones
-    #    weights = np.ones(len(data))
-
-    return weights
+    return data
 
 
-def average_container(container,
-                      ccd_x_center,
-                      ccd_y_center,
-                      max_ccd_radius,
-                      min_num_observations,
-                      dat_type="apass"):
+def average_container(container, filter_config):
     """Parses the measurements contained within a container and averages the data.
 
     Data will be returned as a formatted dictionary, created with dat.make_dat_dict
@@ -261,15 +281,12 @@ def average_container(container,
     If there is no data in this container, the function will return an empty dictionary.
     """
 
-    global filter_ids
-    global filter_names
-
     # A container should store data on precisely one star, but that data will
     # be taken through multiple photometric filters and potentially originate from
     # multiple fields (telescope pointings). In this function, we average
     # the photometry for each field and generate one output line for each field.
 
-    output = dat.make_dat_dict(dat_type=dat_type)
+    output = dat.make_dat_dict(dat_type=filter_config.dat_type)
 
     # Read in the data. This will be a numpy.narray object, so we can slice
     # and dice it however we would like.
@@ -298,15 +315,13 @@ def average_container(container,
     ##
     # Filtering Stages.
     ##
-
-    # By default, assume the data SHOULD be included by initializing the
-    # 'use_data' field to True
-    tmp = np.ones(len(data))
-    data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
+    # convert the data to a freddat data format
+    data = fred.to_freddat(data)
 
     # Apply individual filters.
-    data = apply_filters(data, ccd_x_center, ccd_y_center, max_ccd_radius,
-                         min_num_observations = min_num_observations)
+    data = apply_filters(data, filter_config)
+    # compute the photometric weights
+    data = compute_weights(data)
 
     # get a list of filters in numerical order
     # NOTE: It is possible that the data contain filters not specified in
@@ -317,7 +332,7 @@ def average_container(container,
     for filter_id in data_filter_ids:
 
         # skip filters not in the specified filter set
-        if filter_id not in filter_ids:
+        if filter_id not in filter_config.filter_ids:
             continue
 
         # extract the data in this filter
@@ -331,24 +346,21 @@ def average_container(container,
         mag     = 99.999
         mag_sig = 99.999
 
-        weights = compute_weights(t_data, filter_id)
-        if num_obs >= min_num_observations and any(weights > 0):
-
-            # initialize the weight vector
+        if num_obs >= filter_config.min_num_observations:
 
             # magnitude and its uncertainty
-            mag = average(t_data['xmag1'], weights=weights)
+            mag = average(t_data['xmag1'], weights=t_data['weight'])
             if num_obs > 1:
                 mag_sig = std(t_data['xmag1'])
             else:
                 mag_sig = t_data['xerr1']
 
         # Assign the filter values to the corresponding entries in the dictionary
-        filter_idx = filter_ids.index(filter_id)
-        phot_name = filter_names[filter_idx]
+        filter_idx    = filter_config.filter_ids.index(filter_id)
+        phot_name     = filter_config.filter_names[filter_idx]
         phot_sig_name = phot_name + "_sig"
-        obs_name = 'num_obs_' + phot_name
-        night_name = 'num_nights_' + phot_name
+        obs_name      = 'num_obs_' + phot_name
+        night_name    = 'num_nights_' + phot_name
 
         output[phot_name]     = float(mag)
         output[phot_sig_name] = float(mag_sig)
@@ -362,15 +374,9 @@ def average_container(container,
 
     return output
 
-def sro_zone_to_dat(save_dir, zone_container_filename):
+def sro_zone_to_dat(save_dir, filter_config, zone_container_filename):
     """Processes all of the rectangles found in zone. Zone should be a valid subdirectory
     of save_dir"""
-
-    global filter_ids
-    global filter_names
-
-    filter_ids   = sro_filter_ids
-    filter_names = sro_filter_names
 
     zone_id   = apass.zone_from_name(zone_container_filename)
     zone_name = apass.name_zone(zone_id)
@@ -391,12 +397,7 @@ def sro_zone_to_dat(save_dir, zone_container_filename):
     for leaf in leaves:
         for container in leaf.containers:
             # average the data
-            c_aves = average_by_field(container,
-                                      sro_ccd_x_center,
-                                      sro_ccd_y_center,
-                                      sro_max_ccd_radius,
-                                      sro_min_num_observations,
-                                      dat_type="sro")
+            c_aves = average_by_field(container, filter_config)
             averages.extend(c_aves)
 
             # populate overlapping line information
@@ -439,14 +440,9 @@ def sro_zone_to_dat(save_dir, zone_container_filename):
     graph_filename = save_dir + "/" + zone_name + ".p"
     nx.write_gpickle(G, graph_filename)
 
-def apass_zone_to_dat(save_dir, zone_container_filename):
+def apass_zone_to_dat(save_dir, filter_config, zone_container_filename):
     """Process all of the rectangles found in the zone.
     With APASS data, we average on a per-container basis."""
-
-    global filter_ids
-    global filter_names
-    filter_ids   = apass_filter_ids
-    filter_names = apass_filter_names
 
     averages = []
 
@@ -464,12 +460,7 @@ def apass_zone_to_dat(save_dir, zone_container_filename):
     for leaf in leaves:
         for container in leaf.containers:
             # average the data
-            c_ave = average_container(container,
-                                      apass_ccd_x_center,
-                                      apass_ccd_y_center,
-                                      apass_max_ccd_radius,
-                                      apass_min_num_observations,
-                                      dat_type="apass")
+            c_ave = average_container(container, filter_config)
             averages.append(c_ave)
 
     # write out the average information
@@ -477,24 +468,14 @@ def apass_zone_to_dat(save_dir, zone_container_filename):
     averages = dat.dicts_to_ndarray(averages, dat_type = "apass")
     dat.write_dat(dat_filename, averages, dat_type="apass")
 
-def zone_to_dat(proc_func, save_dir, zone_container_filename):
+def zone_to_dat(proc_func, save_dir, filter_config, zone_container_filename):
     """Wrapper function that includes exception handling and logging"""
 
     # input globals
     global error_filename
-    global bad_nights_filename
-    global bad_night_fields_filename
-
-    # output globals
-    global bad_nights
-    global bad_night_fields
-
-    # load remaining globals
-    bad_nights       = badfiles.read_bad_nights(bad_nights_filename)
-    bad_night_fields = badfiles.read_bad_night_fields(bad_night_fields_filename)
 
     try:
-        proc_func(save_dir, zone_container_filename)
+        proc_func(save_dir, filter_config, zone_container_filename)
     except:
         message = "ERROR: Failed to convert %s. Re-run in debug mode.\n" % (zone_container_filename)
         tb = traceback.format_exc()
@@ -519,8 +500,6 @@ def main():
                         help="Run in debug mode")
 
     global error_filename
-    global bad_nights_filename
-    global bad_night_fields_filename
 
     # Parse the arguments and start timing the script.
     args = parser.parse_args()
@@ -536,14 +515,17 @@ def main():
     except:
         pass
 
-    bad_nights_filename       = args.bad_night_file
-    bad_night_fields_filename = args.bad_night_field_file
+    # configure the filters, assume APASS by default
+    filter_config = filter_config_data()
+    filter_config.load_apass_defaults()
+    filter_config.bad_night_filename       = args.bad_night_file
+    filter_config.bad_night_field_filename = args.bad_night_field_file
 
-    # select the zone-to-dat function
-    # by default, assume APASS format data
-    ztd_func = partial(zone_to_dat, apass_zone_to_dat, save_dir)
+    # configure the zone-to-dat function
+    ztd_func = partial(zone_to_dat, apass_zone_to_dat, save_dir, filter_config)
     if args.format == "sro":
-        ztd_func = partial(zone_to_dat, sro_zone_to_dat, save_dir)
+        filter_config.load_sro_defaults()
+        ztd_func = partial(zone_to_dat, sro_zone_to_dat, save_dir, filter_config)
 
     # run in debug mode
     if args.debug:

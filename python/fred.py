@@ -24,7 +24,7 @@ fred_col_types  = ['float64',  'float64',  'float32', 'float32', 'bool',
 fredbin_col_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d',
                    '%d',    '%02.6f',  '%02.6f',  '%6i',   '%6i',   '%11s',
                    '%03i',      '%02.6f',  '%02.6f',  '%+02.6f', '%6i',
-                   '%6i',   '%02.6f']
+                   '%6i',   '%06.2f']
 
 # fredbin follows the same format as fred, but also has columns for 'rect' and 'container'
 fredbin_col_names = copy(fred_col_names)
@@ -35,6 +35,19 @@ fredbin_extra_col_types = ['int32', 'int32', 'int32', 'S7']
 fredbin_col_types.extend(fredbin_extra_col_types)
 fredbin_extra_col_fmt   = ['%6i',   '%6i',   '%6i',   '%7s']
 fredbin_col_fmt.extend(fredbin_extra_col_fmt)
+
+# freddat is a pseudo type only used to dump information from containers wherein the
+# weights, flags, and similar items are specified
+# NOTE: If you modify these fields, be sure to change to_freddat() below!
+freddat_col_names = copy(fredbin_col_names)
+freddat_extra_col_names = ['weight', 'use_data']
+freddat_col_names.extend(freddat_extra_col_names)
+freddat_col_types = copy(fredbin_col_types)
+freddat_extra_col_types = ['float32', 'bool']
+freddat_col_types.extend(freddat_extra_col_types)
+freddat_col_fmt = copy(fredbin_col_fmt)
+freddat_extra_col_fmt = ['%1.0f', '%1i']
+freddat_col_fmt.extend(freddat_extra_col_fmt)
 
 def night_from_filename(filename):
     filename = os.path.basename(filename)
@@ -133,6 +146,29 @@ def read_fredbin(filename):
 
     return data
 
+def to_fredbin(list_data):
+
+    dtype={'names': fredbin_col_names,'formats': fredbin_col_types}
+    data = np.asarray(list_data, dtype=dtype)
+
+    return data
+
+def to_freddat(fredbin_data):
+    """Converts a fredbin formatted numpy array to a freddat formatted numpy array."""
+
+    # deep copy the data
+    data = np.copy(fredbin_data)
+
+    # insert weights
+    tmp = np.zeros(len(data))
+    data = nprf.append_fields(data, ['weight'], [tmp], dtypes=['float32'], usemask=False)
+
+    # insert the 'use_data' field with all data enabled by default
+    tmp = np.ones(len(data))
+    data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=['bool'], usemask=False)
+
+    return data
+
 def write_txt(fredbin_like_data, filename, fredbin_type='fredbin'):
     """Writes a text file from either fredbin or freddat data types."""
 
@@ -154,6 +190,7 @@ def write_txt(fredbin_like_data, filename, fredbin_type='fredbin'):
     header += "Column formats: " + ','.join(col_fmt)   + "\n"
 
     np.savetxt(filename + ".txt", fredbin_like_data, header=header, fmt=col_fmt)
+    print("Wrote %s" % (filename + '.txt'))
 
 def write_fredbin_txt(fredbin_data, filename):
     """Writes fredbin data as text to the specified file"""
