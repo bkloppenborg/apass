@@ -15,7 +15,7 @@ def main():
 
     for filename in args.input:
         data = fred.read_fredbin(filename)
-        fred.write_txt(data, filename)
+        fred.write_fredbin_txt(data, filename)
 
 if __name__ == "__main__":
     main()

@@ -133,10 +133,32 @@ def read_fredbin(filename):
 
     return data
 
-def write_txt(fredbin_data, filename):
-    header  = "APASS .fredbin text file dump. Format is as follows:\n"
-    header += "Column names: "   + ','.join(fredbin_col_names) + "\n"
-    header += "Column types: "   + ','.join(fredbin_col_types) + "\n"
-    header += "Column formats: " + ','.join(fredbin_col_fmt)   + "\n"
+def write_txt(fredbin_like_data, filename, fredbin_type='fredbin'):
+    """Writes a text file from either fredbin or freddat data types."""
 
-    np.savetxt(filename + ".txt", fredbin_data, header=header, fmt=fredbin_col_fmt)
+    col_names = []
+    col_types = []
+    col_formats = []
+    if fredbin_type == 'fredbin':
+        col_names = fredbin_col_names
+        col_types = fredbin_col_types
+        col_fmt   = fredbin_col_fmt
+    elif fredbin_type == 'freddat':
+        col_names = freddat_col_names
+        col_types = freddat_col_types
+        col_fmt   = freddat_col_fmt
+
+    header  = "APASS .fredbin text file dump. Format is as follows:\n"
+    header += "Column names: "   + ','.join(col_names) + "\n"
+    header += "Column types: "   + ','.join(col_types) + "\n"
+    header += "Column formats: " + ','.join(col_fmt)   + "\n"
+
+    np.savetxt(filename + ".txt", fredbin_like_data, header=header, fmt=col_fmt)
+
+def write_fredbin_txt(fredbin_data, filename):
+    """Writes fredbin data as text to the specified file"""
+    write_txt(freddat_data, filename, fredbin_type='fredbin')
+
+def write_freddat_txt(freddat_data, filename):
+    """Writes freddat data as text to the specified file"""
+    write_txt(freddat_data, filename, fredbin_type='freddat')
