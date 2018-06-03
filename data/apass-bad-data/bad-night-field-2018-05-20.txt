@@ -1,5 +1,0 @@
-# This file identifies fields on specific nights within the APASS data set
-# that are known to be bad for various reasons.
-# Each line contains a night ID in [n|s]XXXXXX format, and a field ID in S25
-# format. It is suggested, but not required, that this file be sorted by night_id
-# night_id, field_id
