@@ -346,7 +346,7 @@ def average_container(container, filter_config):
         mag     = 99.999
         mag_sig = 99.999
 
-        if num_obs >= filter_config.min_num_observations:
+        if (num_obs >= filter_config.min_num_observations) and any(t_data['weight'] > 0):
 
             # magnitude and its uncertainty
             mag = average(t_data['xmag1'], weights=t_data['weight'])
