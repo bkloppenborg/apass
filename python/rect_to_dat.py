@@ -58,7 +58,24 @@ sro_filter_ids = dat.filter_ids(dat_type="sro")
 sro_filter_names = dat.filter_names(dat_type="sro") # however we write out V, (B-V), B, sg, sr, si)
 sro_min_num_observations = 3
 
-def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius,
+def apply_filters(data, ccd_x_center, ccd_y_center, max_ccd_radius,
+                  min_num_observations = 3):
+
+    global bad_nights       # numpy array with night_names that are known to be bad
+    global bad_night_fields # numpy array with known bad (night_id,field_id) pairs
+
+    # Any given filter should ONLY set 'use_data' flags to False to avoid
+    # impacting other filters.
+    data = filter_bad_nights(data, bad_nights)
+    data = filter_bad_night_fields(data, bad_night_fields)
+    data = filter_non_photometric_nights(data)
+
+    data = filter_ccd_radius(data, ccd_x_center, ccd_y_center, max_ccd_radius,
+                                min_num_observations = min_num_observations)
+
+    return data
+
+def filter_ccd_radius(data, x_center, y_center, max_ccd_radius,
                          min_num_observations = 3):
     """Sets the 'use_data' flag to False for any stars that reside OUTSIDE
     of a specified radius from the CCD center provided that a minimum number
@@ -95,7 +112,7 @@ def filter_by_ccd_radius(data, x_center, y_center, max_ccd_radius,
 
     return data
 
-def filter_by_non_photometric_nights(data):
+def filter_non_photometric_nights(data):
     """Sets the 'use_data' flag to False for nights that are identified as
     being non-photometric in the raw FRED fields. Returns the modified data array"""
 
@@ -104,7 +121,7 @@ def filter_by_non_photometric_nights(data):
 
     return data
 
-def filter_by_bad_nights(data, bad_nights):
+def filter_bad_nights(data, bad_nights):
     """Sets the 'use_data' flag to False for nights that are identified as
     bad nights.
     Input:
@@ -123,7 +140,7 @@ def filter_by_bad_nights(data, bad_nights):
 
     return data
 
-def filter_by_bad_night_fields(data, bad_night_fields):
+def filter_bad_night_fields(data, bad_night_fields):
     """Sets the 'use_data' flag to False for fields on specific nights that
     have been identified as bad.  Returns the modified data array"""
 
@@ -246,14 +263,6 @@ def average_container(container,
 
     global filter_ids
     global filter_names
-    global bad_nights       # numpy array with night_names that are known to be bad
-    global bad_night_fields # numpy array with known bad (night_id,field_id) pairs
-
-    if bad_nights is None:
-        bad_nights = []
-
-    if bad_night_fields is None:
-        bad_night_fields = []
 
     # A container should store data on precisely one star, but that data will
     # be taken through multiple photometric filters and potentially originate from
@@ -296,14 +305,8 @@ def average_container(container,
     data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=[bool])
 
     # Apply individual filters.
-    # Any given filter should ONLY set 'use_data' flags to False to avoid
-    # impacting other filters.
-    data = filter_by_bad_nights(data, bad_nights)
-    data = filter_by_bad_night_fields(data, bad_night_fields)
-    data = filter_by_non_photometric_nights(data)
-
-    data = filter_by_ccd_radius(data, ccd_x_center, ccd_y_center, max_ccd_radius,
-                                min_num_observations = min_num_observations)
+    data = apply_filters(data, ccd_x_center, ccd_y_center, max_ccd_radius,
+                         min_num_observations = min_num_observations)
 
     # get a list of filters in numerical order
     # NOTE: It is possible that the data contain filters not specified in
