@@ -107,8 +107,44 @@ def apply_filters(data, filter_config):
     data = filter_bad_night_fields(data, bad_nights_fields)
     data = filter_non_photometric_nights(data)
 
+    data = filter_too_bright_faint(data)
     data = filter_ccd_radius(data, ccd_x_center, ccd_y_center, max_ccd_radius,
                                 min_num_observations = min_num_observations)
+
+    return data
+
+def compute_weights(data):
+    """Stub function for future/optional weight computation.
+    Currently does nothing."""
+
+    return data
+
+def filter_too_bright_faint(data):
+    """Sets the 'use_data' flag to False for any stars that are
+    too bright or too faint for their specified exposure duration."""
+
+    num_obs = len(data)
+
+    for i in range(0, num_obs):
+        filter_id = data[i]['filter_id']
+        exptime   = data[i]['exposure_time']
+        mag       = data[i]['xmag1']
+        use_data  = data[i]['use_data']
+
+        # Disable stars that are either too bright or too faint
+        # for their given exposure duration.
+        if filter_id in [3,9,10]:
+            if exptime < 20 and mag > 11:
+                use_data = False
+            elif exptime > 20 and mag < 10:
+                use_data = False
+        elif filter_id in [2,8]:
+            if exptime < 40 and mag > 11:
+                use_data = False
+            elif exptime > 40 and mag < 10:
+                use_data = False
+
+        data[i]['use_data'] = use_data
 
     return data
 
@@ -220,57 +256,6 @@ def average_by_field(container, filter_config):
         output.append(ave_data)
 
     return output
-
-def compute_weights(data):
-    """Computes the weights for APASS data. The data array should be
-    a numpy array of type freddat. See fred.to_freddat for more information."""
-
-    """Computes weights associated with APASS data"""
-
-    num_obs = len(data)
-
-    for i in range(0, num_obs):
-        exptime   = data[i]['exposure_time']
-        mag       = data[i]['xmag1']
-        sig       = data[i]['xerr1']
-        filter_id = data[i]['filter_id']
-
-        weight = 1
-
-        # here we use the raw filter numbers
-        if filter_id in [7, 11, 13, 14]: # su, sz, ZS, Y
-            weight = 1
-        elif filter_id in [3,9,10]: # V, sr, si
-            if mag < 10 and exptime >= 20:
-                weight = 0
-            elif mag > 10:
-                if sig < 0.01:
-                    weight = 3
-                elif sig > 0.05:
-                    weight = 1
-                else:
-                    weight = 2
-            else:
-                weight = 1
-        elif filter_id in [2,8]: # B and sg
-            if mag < 10 and exptime >= 40:
-                weight = 0
-            elif mag > 10:
-                if sig < 0.01:
-                    weight = 3
-                elif sig > 0.05:
-                    weight = 1
-                else:
-                    weight = 2
-            else:
-                weight = 1
-        else:
-            weight = 1
-
-        # update the weight
-        data[i]['weight'] = weight
-
-    return data
 
 
 def average_container(container, filter_config):
