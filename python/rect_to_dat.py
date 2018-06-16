@@ -114,8 +114,23 @@ def apply_filters(data, filter_config):
     return data
 
 def compute_weights(data):
-    """Stub function for future/optional weight computation.
-    Currently does nothing."""
+    """Computes weights that are proportional to the residual correction (dmag) column."""
+
+    num_points = len(data)
+    for i in range(0, num_points):
+        weight = 1
+        dmag = data[i]['dmag'] # extract the residual correction
+
+        if dmag < 0.05:
+            weight = 10
+        elif dmag < 0.1:
+            weight = 5
+        elif dmag < 0.2:
+            weight = 2
+        else:
+            weight = 1
+
+        data[i]['weight'] = weight
 
     return data
 
