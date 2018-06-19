@@ -228,15 +228,15 @@ def filter_bad_nights(data, bad_nights):
 
     return data
 
-def filter_bad_night_fields(data, bad_night_fields):
+def filter_bad_night_fields(data, bad_nights_fields):
     """Sets the 'use_data' flag to False for fields on specific nights that
     have been identified as bad.  Returns the modified data array"""
 
-    for i in range(0, len(bad_night_fields)):
-        bad_night    = bad_night_fields['night_name'][i]
-        bad_field_id = bad_night_fileds['field_id'][i]
+    for i in range(0, len(bad_nights_fields)):
+        bad_night    = bad_nights_fields['night'][i]
+        bad_field_id = bad_nights_fields['field_id'][i]
 
-        indexes = np.where((data['night_name'] == bad_night) & (data['field_id'] == bad_field_id))
+        indexes = np.where((data['night'] == bad_night) & (data['field_id'] == bad_field_id))
         data['use_data'][indexes] = False
 
     return data
