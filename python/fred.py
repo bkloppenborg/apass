@@ -46,7 +46,7 @@ freddat_col_types = copy(fredbin_col_types)
 freddat_extra_col_types = ['float32', 'bool']
 freddat_col_types.extend(freddat_extra_col_types)
 freddat_col_fmt = copy(fredbin_col_fmt)
-freddat_extra_col_fmt = ['%1.0f', '%1i']
+freddat_extra_col_fmt = ['%2.0f', '%1i']
 freddat_col_fmt.extend(freddat_extra_col_fmt)
 
 def night_from_filename(filename):
