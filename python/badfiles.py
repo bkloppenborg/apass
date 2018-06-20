@@ -28,6 +28,9 @@ def read_bad_nights(filename):
     dtype={'names': names,'formats': types}
     data = np.loadtxt(filename, dtype)
 
+    # ensure that the entries are unique
+    data = np.unique(data, axis=0)
+
     # sort the data
     data = np.sort(data, order='night_name')
 
@@ -40,6 +43,9 @@ def read_bad_night_fields(bad_night_fields_filename):
     # load the data and extract a few columns
     data = read_fred(bad_night_fields_filename)
     data = data[['field_id', 'night']]
+
+    # ensure that the entries are unique
+    data = np.unique(data, axis=0)
 
     # sort the data
     data = np.sort(data, order=['night', 'field_id'])
