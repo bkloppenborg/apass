@@ -221,6 +221,7 @@ def filter_bad_nights(data, bad_nights):
     """
 
     num_data = len(data)
+    num_bad_nights = len(bad_nights)
     for i in range(0, num_data):
         night_name = data['night_name'][i]
 
@@ -228,7 +229,7 @@ def filter_bad_nights(data, bad_nights):
         idx = np.searchsorted(bad_nights['night_name'], night_name)
 
         # if the value at idx matches the value of night, set the flag.
-        if bad_nights['night_name'][idx] == night_name:
+        if idx < num_bad_nights and bad_nights['night_name'][idx] == night_name:
             data['use_data'][i] = False
 
     return data
@@ -238,6 +239,7 @@ def filter_bad_night_fields(data, bad_nights_fields):
     have been identified as bad.  Returns the modified data array"""
 
     num_data = len(data)
+    num_bad = len(bad_nights_fields)
     for i in range(0, num_data):
         night    = data['night'][i]
         field_id = data['field_id'][i]
@@ -245,7 +247,7 @@ def filter_bad_night_fields(data, bad_nights_fields):
         # search for the index corresponding to the night
         idx = np.searchsorted(bad_nights_fields['night'], night)
 
-        while bad_nights_fields['night'][idx] == night:
+        while idx < num_bad and bad_nights_fields['night'][idx] == night:
             if bad_nights_fields['field_id'][idx] == field_id:
                 data['use_data'][i] = False
             else:
