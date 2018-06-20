@@ -220,11 +220,16 @@ def filter_bad_nights(data, bad_nights):
     modified numpy array in fredbin format
     """
 
-    for i in range(0, len(bad_nights)):
-        bad_night = bad_nights['night_name'][i]
+    num_data = len(data)
+    for i in range(0, num_data):
+        night_name = data['night_name'][i]
 
-        indexes = np.where(data['night_name'] == bad_night)
-        data['use_data'][indexes] = False
+        # search for the index corresponding to night
+        idx = np.searchsorted(bad_nights['night_name'], night_name)
+
+        # if the value at idx matches the value of night, set the flag.
+        if bad_nights['night_name'][idx] == night_name:
+            data['use_data'][i] = False
 
     return data
 
@@ -232,12 +237,19 @@ def filter_bad_night_fields(data, bad_nights_fields):
     """Sets the 'use_data' flag to False for fields on specific nights that
     have been identified as bad.  Returns the modified data array"""
 
-    for i in range(0, len(bad_nights_fields)):
-        bad_night    = bad_nights_fields['night'][i]
-        bad_field_id = bad_nights_fields['field_id'][i]
+    num_data = len(data)
+    for i in range(0, num_data):
+        night    = data['night'][i]
+        field_id = data['field_id'][i]
 
-        indexes = np.where((data['night'] == bad_night) & (data['field_id'] == bad_field_id))
-        data['use_data'][indexes] = False
+        # search for the index corresponding to the night
+        idx = np.searchsorted(bad_nights_fields['night'], night)
+
+        while bad_nights_fields['night'][idx] == night:
+            if bad_nights_fields['field_id'][idx] == field_id:
+                data['use_data'][i] = False
+            else:
+                idx += 1
 
     return data
 
