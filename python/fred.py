@@ -14,7 +14,7 @@ from copy import copy
 
 # set column names. Note, 'flag1' == 1 -> non-photometric night
 fred_col_names  = ['ra',       'dec',      'ccdx',    'ccdy',    'flag1',
-                   'flag2', 'hjwwwd',     'airmass', 'set',   'group', 'field_id',
+                   'flag2', 'hjd',     'airmass', 'set',   'group', 'field_id',
                    'filter_id', 'xmag1',   'xerr1',   'dmag',    'sys',
                    'night', 'exposure_time']
 fred_col_types  = ['float64',  'float64',  'float32', 'float32', 'bool',
@@ -131,8 +131,9 @@ def read_fred(filename):
     night_names = [night_name] * num_rows
 
     # append extra type columns for zone_id, node_id, and container_id
-    tmp = np.zeros(num_rows)
-    data = nprf.append_fields(data, fredbin_extra_col_names, [tmp, tmp, tmp, night_names],
+    tmp0 = np.zeros(num_rows)
+    tmp1 = np.ones(num_rows)
+    data = nprf.append_fields(data, fredbin_extra_col_names, [tmp0, tmp0, tmp0, night_names, tmp1],
                               dtypes=fredbin_extra_col_types)
 
     return data
