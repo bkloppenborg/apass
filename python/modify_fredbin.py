@@ -5,6 +5,7 @@ import numpy.lib.recfunctions as nprf
 from functools import partial
 import multiprocessing as mp
 import os
+import glob
 
 import fred
 
@@ -37,7 +38,7 @@ def fredbin_add_use_data(filename):
 def main():
 
     parser = argparse.ArgumentParser(description='Parses .fred files into zone .fredbin files')
-    parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
+    parser.add_argument('save_dir', help="Directory containing FREDBIN files")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
@@ -46,14 +47,15 @@ def main():
     # parse the command line arguments and start timing the script
     args = parser.parse_args()
 
+    # locate input files
+    input = glob.glob(args.save_dir + "/*.fredbin")
+
     # load globals
-    save_dir = os.path.dirname(os.path.abspath(args.input[0]))
-    error_filename = save_dir + "/modify_fredbin.errorlog"
+    error_filename = args.save_dir + "/modify_fredbin.errorlog"
 
     # truncate the error log file
     with open(error_filename, 'w') as error_file:
         error_file.truncate()
-
 
     # Construct a partial to serve as the function to call in serial or
     # parallel mode below.
@@ -62,14 +64,14 @@ def main():
     # set up the pool and launch the function
     results = []
     if args.debug:
-        for filename in args.input:
+        for filename in input:
             r = fred_func(filename)
             results.extend(r)
     else:
         pool = mp.Pool(args.jobs)
 
         # farm out the jobs and wait for the result
-        pool_result = pool.imap(fred_func, args.input)
+        pool_result = pool.imap(fred_func, input)
         pool.close()
         pool.join()
 
@@ -77,7 +79,7 @@ def main():
             results.extend(r)
 
     # write out a file containing information on the zones modified.
-    mod_file = save_dir + "/" + "modified_files.txt"
+    mod_file = args.save_dir + "/" + "modified_files.txt"
     with open(mod_file, 'w') as outfile:
         for filename in results:
             outfile.write(filename + "\n")
