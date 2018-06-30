@@ -14,7 +14,7 @@ from copy import copy
 
 # set column names. Note, 'flag1' == 1 -> non-photometric night
 fred_col_names  = ['ra',       'dec',      'ccdx',    'ccdy',    'flag1',
-                   'flag2', 'hjd',     'airmass', 'set',   'group', 'field_id',
+                   'flag2', 'hjwwwd',     'airmass', 'set',   'group', 'field_id',
                    'filter_id', 'xmag1',   'xerr1',   'dmag',    'sys',
                    'night', 'exposure_time']
 fred_col_types  = ['float64',  'float64',  'float32', 'float32', 'bool',
@@ -28,12 +28,12 @@ fredbin_col_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d',
 
 # fredbin follows the same format as fred, but also has columns for 'rect' and 'container'
 fredbin_col_names = copy(fred_col_names)
-fredbin_extra_col_names = ['zone_id', 'node_id', 'container_id', 'night_name']
+fredbin_extra_col_names = ['zone_id', 'node_id', 'container_id', 'night_name', 'use_data']
 fredbin_col_names.extend(fredbin_extra_col_names)
 fredbin_col_types = copy(fred_col_types)
-fredbin_extra_col_types = ['int32', 'int32', 'int32', 'S7']
+fredbin_extra_col_types = ['int32', 'int32', 'int32', 'S7', 'bool']
 fredbin_col_types.extend(fredbin_extra_col_types)
-fredbin_extra_col_fmt   = ['%6i',   '%6i',   '%6i',   '%7s']
+fredbin_extra_col_fmt   = ['%6i',   '%6i',   '%6i',   '%7s', '%1i']
 fredbin_col_fmt.extend(fredbin_extra_col_fmt)
 
 # freddat is a pseudo type only used to dump information from containers wherein the
@@ -145,6 +145,13 @@ def read_fredbin(filename):
     data = np.fromfile(filename, dtype)
 
     return data
+
+def write_fredbin(filename, data):
+    """Writes a APASS-formatted numpy array, data, to the specified file."""
+
+    with open(filename, 'w') as outfile:
+        for datum in data:
+            outfile.write(datum)
 
 def to_fredbin(list_data):
 
