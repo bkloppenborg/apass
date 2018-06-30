@@ -201,7 +201,7 @@ def write_txt(fredbin_like_data, filename, fredbin_type='fredbin'):
 
 def write_fredbin_txt(fredbin_data, filename):
     """Writes fredbin data as text to the specified file"""
-    write_txt(freddat_data, filename, fredbin_type='fredbin')
+    write_txt(fredbin_data, filename, fredbin_type='fredbin')
 
 def write_freddat_txt(freddat_data, filename):
     """Writes freddat data as text to the specified file"""
