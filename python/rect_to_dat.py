@@ -97,16 +97,8 @@ def apply_filters(data, filter_config):
     bad_night_filename        = filter_config.bad_night_filename
     bad_night_field_filename  = filter_config.bad_night_field_filename
 
-    # load bad night data
-    bad_nights        = badfiles.read_bad_nights(bad_night_filename)
-    bad_nights_fields = badfiles.read_bad_night_fields(bad_night_field_filename)
-
     # Any given filter should ONLY set 'use_data' flags to False to avoid
     # impacting other filters.
-    data = filter_bad_nights(data, bad_nights)
-    data = filter_bad_night_fields(data, bad_nights_fields)
-    data = filter_non_photometric_nights(data)
-
     data = filter_too_bright_faint(data)
     data = filter_ccd_radius(data, ccd_x_center, ccd_y_center, max_ccd_radius,
                                 min_num_observations = min_num_observations)
@@ -197,61 +189,6 @@ def filter_ccd_radius(data, x_center, y_center, max_ccd_radius,
         # Otherwise leave the data untouched.
         if num_good > min_num_observations:
             data['use_data'][bad_indices] = False
-
-    return data
-
-def filter_non_photometric_nights(data):
-    """Sets the 'use_data' flag to False for nights that are identified as
-    being non-photometric in the raw FRED fields. Returns the modified data array"""
-
-    indexes = np.where(data['flag1'] == 1)
-    data['use_data'][indexes] = False
-
-    return data
-
-def filter_bad_nights(data, bad_nights):
-    """Sets the 'use_data' flag to False for nights that are identified as
-    bad nights.
-    Input:
-    data - numpy array loaded using fred.read_fredbin
-    bad_nights - numpy array loaded using badfiles.read_bad_nights
-
-    Returns:
-    modified numpy array in fredbin format
-    """
-
-    num_data = len(data)
-    num_bad_nights = len(bad_nights)
-    for i in range(0, num_data):
-        night_name = data['night_name'][i]
-
-        # search for the index corresponding to night
-        idx = np.searchsorted(bad_nights['night_name'], night_name)
-
-        # if the value at idx matches the value of night, set the flag.
-        if idx < num_bad_nights and bad_nights['night_name'][idx] == night_name:
-            data['use_data'][i] = False
-
-    return data
-
-def filter_bad_night_fields(data, bad_nights_fields):
-    """Sets the 'use_data' flag to False for fields on specific nights that
-    have been identified as bad.  Returns the modified data array"""
-
-    num_data = len(data)
-    num_bad = len(bad_nights_fields)
-    for i in range(0, num_data):
-        night    = data['night'][i]
-        field_id = data['field_id'][i]
-
-        # search for the index corresponding to the night
-        idx = np.searchsorted(bad_nights_fields['night'], night)
-
-        while idx < num_bad and bad_nights_fields['night'][idx] == night:
-            if bad_nights_fields['field_id'][idx] == field_id:
-                data['use_data'][i] = False
-            else:
-                idx += 1
 
     return data
 

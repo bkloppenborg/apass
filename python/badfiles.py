@@ -2,6 +2,8 @@
 
 # system includes
 import numpy as np
+import numpy.lib.recfunctions as nprf
+import warnings
 
 # local includes
 from fred import fredbin_col_names, fredbin_col_types, fredbin_col_fmt
@@ -31,14 +33,24 @@ def read_bad_nights(filename):
     # ensure that the entries are unique
     data = np.unique(data, axis=0)
 
+    # Append a numeric 'night' column
+    tmp = np.zeros(len(data))
+    data = nprf.append_fields(data, ['night'], [tmp], dtypes=['int32'], usemask=False)
+
+    # create a column containing the (numeric) night value
+    for i in range(0, len(data)):
+        data[i]['night'] = int(data[i]['night_name'][1:])
+
     # sort the data
-    data = np.sort(data, order='night_name')
+    data = np.sort(data, order='night')
 
     return data
 
 def read_bad_night_fields(bad_night_fields_filename):
     """Reads in the bad-night-field file. Returns a numpy structured
     array with the keys 'night', 'field_id' sorted in night-field order."""
+
+    warnings.simplefilter("ignore")
 
     # load the data and extract a few columns
     data = read_fred(bad_night_fields_filename)
