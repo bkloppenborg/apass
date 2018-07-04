@@ -107,7 +107,7 @@ rects = [] # stores exported rectangles
 def main():
 
     parser = argparse.ArgumentParser(description='Merges .fred photometric files')
-    parser.add_argument('savedir', help="Directory to save the output files.")
+    parser.add_argument('save_dir', help="Directory to save the output files.")
     parser.add_argument('--plot', dest='plot', help="Plot the generated zones", action='store_true')
     parser.set_defaults(plot=False)
 
@@ -118,7 +118,7 @@ def main():
     global fileid # used in quadtree_types.py
     fileid = apass.north_zone_id + 1 # skip over reserved IDs
 
-    zonefile = args.savedir + '/global.json'
+    zonefile = args.save_dir + '/global.json'
 
     # build the quadtree, then merge the zones
     bounds = Rect(0, 360, -90, 90)
@@ -128,7 +128,7 @@ def main():
     merge_polar_zones(tree)
 
     if args.plot:
-        plot_zones(args.savedir, tree)
+        plot_zones(args.save_dir, tree)
 
     leaves = tree.get_leaves()
     print("Created %i zones" % (len(leaves)))
