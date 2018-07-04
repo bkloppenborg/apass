@@ -77,13 +77,20 @@ def read_fred_manual(filename):
 
     # define a flags
     flag_missing_columns = False
+    missing_column_lines = []
+    flag_extra_columns   = False
+    extra_column_lines   = []
 
     data = []
     num_fred_cols = len(fred_col_names)
     dtype={'names': fred_col_names,'formats': fred_col_types}
 
+    line_number = -1
     with open(filename, 'r') as infile:
         for line in infile:
+            # advance the line number
+            line_number += 1
+
             # remove whitespace from the lines
             line = line.strip()
 
@@ -94,18 +101,33 @@ def read_fred_manual(filename):
             # tokenize the line
             line = line.split()
 
+            # skip any lines that don't match our expected format
             if len(line) < num_fred_cols:
                 flag_missing_columns = True
+                missing_column_lines.append(line_number)
+                continue
+
+            if len(line) > num_fred_cols:
+                flag_extra_columns = True
+                extra_column_lines.append(line_number)
                 continue
 
             # initial checks are ok. Append the data.
             data.append(line)
+    # print any error messages
+    if flag_missing_columns:
+        err_str = "WARNING:" + filename + " is missing required columns on lines " \
+                  + ",".join(map(str, missing_column_lines))
+        print(err_str)
 
+    if flag_extra_columns:
+        err_str = "WARNING:" + filename + " contains extra columns on lines " \
+                  + ",".join(map(str, extra_column_lines))
+        print(err_str)
+
+    # no data, return None
     if len(data) == 0:
         return None
-
-    if flag_missing_columns:
-        print("WARNING: %s is missing required columns" % (filename))
 
     # Convert the data into a numpy array:
     data = np.asarray(data, dtype=dtype)
@@ -119,11 +141,18 @@ def read_fred(filename):
     data = []
 
     # first attempt to load using numpy.loadtext
+    loadtxt_failed = False
     try:
         data = np.loadtxt(filename, dtype=dtype)
     except (ValueError,IndexError):
-        # if this fails, try parsing manually
-        data = read_fred_manual(filename)
+        print("Could not load %s using numpy.loadtxt, trying manual method" % (filename))
+        loadtxt_failed = True
+
+    if loadtxt_failed:
+        try:
+            data = read_fred_manual(filename)
+        except:
+            print("Could not load %s using read_fred_manual, bailing." % (filename))
 
     num_rows = len(data)
 
