@@ -66,8 +66,6 @@ class filter_config_data:
         self.ccd_y_center              = None
         self.max_ccd_radius            = None
         self.min_num_observations      = None
-        self.bad_night_filename        = None
-        self.bad_night_field_filename  = None
 
     def load_apass_defaults(self):
         self.dat_type             = 'apass'
@@ -94,8 +92,6 @@ def apply_filters(data, filter_config):
     ccd_y_center              = filter_config.ccd_y_center
     max_ccd_radius            = filter_config.max_ccd_radius
     min_num_observations      = filter_config.min_num_observations
-    bad_night_filename        = filter_config.bad_night_filename
-    bad_night_field_filename  = filter_config.bad_night_field_filename
 
     # Any given filter should ONLY set 'use_data' flags to False to avoid
     # impacting other filters.
@@ -442,10 +438,6 @@ def main():
         description="Converts a containerized zone into APASS photometric output")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('format', type=str, default="apass", choices=valid_formats)
-    parser.add_argument('bad_night_file', type=str,
-                        help="File containing known bad nights")
-    parser.add_argument('bad_night_field_file', type=str,
-                        help="File containing known bad fields on specific nights")
     parser.add_argument('input', nargs='+')
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
@@ -469,8 +461,6 @@ def main():
     # configure the filters, assume APASS by default
     filter_config = filter_config_data()
     filter_config.load_apass_defaults()
-    filter_config.bad_night_filename       = args.bad_night_file
-    filter_config.bad_night_field_filename = args.bad_night_field_file
 
     # configure the zone-to-dat function
     ztd_func = partial(zone_to_dat, apass_zone_to_dat, save_dir, filter_config)

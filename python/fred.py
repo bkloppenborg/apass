@@ -142,17 +142,18 @@ def read_fred(filename):
 def read_fredbin(filename):
     """Reads in an APASS .fredbin file."""
 
-    dtype={'names': fredbin_col_names,'formats': fredbin_col_types}
-    data = np.fromfile(filename, dtype)
-
+    data = np.load(filename)
     return data
+
+    #dtype={'names': fredbin_col_names,'formats': fredbin_col_types}
+    #data = np.fromfile(filename, dtype)
+    #
+    #return data
 
 def write_fredbin(filename, data):
     """Writes a APASS-formatted numpy array, data, to the specified file."""
 
-    with open(filename, 'w') as outfile:
-        for datum in data:
-            outfile.write(datum)
+    data.dump(filename)
 
 def to_fredbin(list_data):
 
@@ -170,10 +171,6 @@ def to_freddat(fredbin_data):
     # insert weights
     tmp = np.ones(len(data))
     data = nprf.append_fields(data, ['weight'], [tmp], dtypes=['float32'], usemask=False)
-
-    # insert the 'use_data' field with all data enabled by default
-    tmp = np.ones(len(data))
-    data = nprf.append_fields(data, ['use_data'], [tmp], dtypes=['bool'], usemask=False)
 
     return data
 

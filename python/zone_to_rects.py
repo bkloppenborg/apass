@@ -17,6 +17,11 @@ import signal
 from functools import partial
 import traceback
 
+# lockfile
+import sys, os
+sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
+from filelock import FileLock
+
 # APASS-specific things
 from quadtree import *
 from quadtree_types import *
@@ -280,7 +285,7 @@ def main():
     save_dir = os.path.dirname(os.path.realpath(args.input[0]))
 
     # configure globals
-    error_filename = save_dir + "zone_to_rects.errorlog"
+    error_filename = save_dir + "error_zone_to_rects.txt"
     tree_file = save_dir + "/global.json"
 
     # Construct a partial to serve as the function to call in serial or
