@@ -133,6 +133,9 @@ def read_dat(filename, dat_type="apass"):
     data['container_height'] /= (3600)
     data['container_area']   /= (3600 * 3600)
 
+    # remove the cos(dec) correction
+    data['ra_sig'] *= cos(data['dec'])
+
     return data
 
 def write_dat(filename, data, dat_type="apass"):
@@ -150,6 +153,9 @@ def write_dat(filename, data, dat_type="apass"):
 
     # write data out in the [0,360] range
     data['ra'] %= 360.0
+
+    # correct ra_sig by cos(dec)
+    data['ra_sig'] /= cos(data['dec'])
 
     # compose a header
     header =  "APASS .dat file output. Format is as follows: \n"
