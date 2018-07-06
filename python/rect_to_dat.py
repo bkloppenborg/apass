@@ -286,11 +286,6 @@ def average_container(container, filter_config):
         indexes = np.where((data['filter_id'] == filter_id) & (data['use_data'] == True))
         t_data = data[indexes]
 
-        # Ensure a minimum number of observations survives.
-        if len(t_data) < filter_config.min_num_observations:
-            indexes = np.where((data['filter_id'] == filter_id))
-            t_data = data[indexes]
-
         # total number of observations, total number of nights.
         num_obs = len(t_data)
         num_nights = len(set(t_data['hjd']))
@@ -436,7 +431,6 @@ def zone_to_dat(proc_func, save_dir, filter_config, zone_container_filename):
         with FileLock(error_filename, timeout=100, delay=0.05):
             with open(error_filename, 'a') as error_file:
                 error_file.write(message + "\n" + str(tb) + "\n")
-
 
 def main():
 
