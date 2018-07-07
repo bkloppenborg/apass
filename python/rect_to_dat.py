@@ -176,7 +176,7 @@ def filter_ccd_radius(data, x_center, y_center, max_ccd_radius,
         # find measurements outside of the maximum radius
 
         # determine the measurements that could be flagged bad
-        bad_indices = np.intersect1d(filter_indices, radius_indices)
+        bad_indices = np.intersect1d(filter_indices[0], radius_indices[0])
         num_bad = len(bad_indices)
         num_good = len(filter_indices) - num_bad
 
