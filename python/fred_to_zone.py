@@ -246,8 +246,7 @@ def remove_fred(save_dir, filename):
 
                 # write the file
                 with open(zone_filename, 'w+b') as outfile:
-                    for datum in zone_data:
-                        outfile.write(datum)
+                    write_fredbin(zone_filename, zone_data)
 
             if data_removed:
                 impacted_zones.append(zone_id)
@@ -349,7 +348,7 @@ def main():
         zone_names.append(filename)
 
     # write out a file containing information on the zones modified.
-    mod_file = args.save_dir + "fred-to-zone-modified-files.txt"
+    mod_file = args.save_dir + "/fred-to-zone-modified-files.txt"
     with open(mod_file, 'w') as outfile:
         for filename in zone_names:
             outfile.write(args.save_dir + '/' + filename + "\n")

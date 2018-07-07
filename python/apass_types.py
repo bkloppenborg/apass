@@ -95,17 +95,19 @@ class RectContainer(dict):
 
         return overlaps
 
-    def save_data(self, filehandle):
-        """Writes this container's data to the specified filehandle"""
+    def get_data(self):
+        """Returns this container's data as a list."""
 
-        if len(self.data) == 0:
-            return
-
+        # ensure the data is marked as belonging to this container.
         for datum in self.data:
             datum['zone_id'] = self.zone_id
             datum['node_id'] = self.node_id
             datum['container_id'] = self.container_id
-            filehandle.write(datum)
+
+        return self.data
+
+    def clear_data(self):
+        """Erases all data contained in this node"""
         self.data = []
 
     def get_corners(self):

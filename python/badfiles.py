@@ -31,7 +31,7 @@ def read_bad_nights(filename):
     data = np.loadtxt(filename, dtype)
 
     # ensure that the entries are unique
-    data = np.unique(data, axis=0)
+    data = np.unique(data)
 
     # Append a numeric 'night' column
     tmp = np.zeros(len(data))
@@ -57,7 +57,7 @@ def read_bad_night_fields(bad_night_fields_filename):
     data = data[['field_id', 'night']]
 
     # ensure that the entries are unique
-    data = np.unique(data, axis=0)
+    data = np.unique(data)
 
     # sort the data
     data = np.sort(data, order=['night', 'field_id'])

@@ -169,22 +169,33 @@ def read_fred(filename):
 
 
 def read_fredbin(filename):
-    """Reads in an APASS .fredbin file."""
+    """Reads in an APASS .fredbin file. Returns it as a numpy structured array."""
 
-    data = np.load(filename)
+    # Depending on their origin, numpy arrays may contains multiple
+    # concatenated numpy structured arrays. As such, we need to repeatedly call
+    # numpy.load to ensure we get all of the data.
+    infile = open(filename, 'rb')
+    data = None
+    while(True):
+
+        try:
+            temp = np.load(infile)
+        except IOError:
+            break
+
+        if data is None:
+            data = temp
+        else:
+            data = np.append(data, temp)
+
     return data
-
-    #dtype={'names': fredbin_col_names,'formats': fredbin_col_types}
-    #data = np.fromfile(filename, dtype)
-    #
-    #return data
 
 def write_fredbin(filename_or_handle, data):
     """Writes a APASS-formatted numpy array, data, to the specified file."""
-
-    np.save(filename_or_handle, data)
+    np.save(filename_or_handle, data, allow_pickle=False)
 
 def to_fredbin(list_data):
+    """Converts a list nested list of fredbin values to a structured numpy array."""
 
     dtype={'names': fredbin_col_names,'formats': fredbin_col_types}
     data = np.asarray(list_data, dtype=dtype)

@@ -237,9 +237,7 @@ def average_container(container, filter_config):
 
     # Read in the data. This will be a numpy.narray object, so we can slice
     # and dice it however we would like.
-    data = container.data
-    dtype={'names': fred.fredbin_col_names,'formats': fred.fredbin_col_types}
-    data = np.asarray(container.data, dtype=dtype)
+    data = fred.to_fredbin(container.get_data())
 
     # if there is no data in the container or it has been moved, return an empty dictionary.
     if len(data) == 0:

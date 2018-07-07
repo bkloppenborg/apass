@@ -8,7 +8,7 @@ to a single average measurement for each star in each filter.
 ## Prerequisites
 
 * pip
-* numpy
+* numpy (1.13 or later)
 * argparse
 * networkx 2.0
 
@@ -30,6 +30,7 @@ The pipeline has the following stages:
   photometric data (`zone_to_rects.py`)
 * Resolve any issues where star measurements overlap between zones
   (`fix_zone_overlaps.py`)
+* Flag bad nights / fields (`flag_bad_data.py`)
 * Perform statistical analysis on the photometric data to generate average
   measurements for each star (`rect_to_dat.py`)
 
@@ -47,14 +48,18 @@ Lastly, there are a variety of configuration parameters that are set in the
 In most situations, the pipeline will be executed as follows:
 
     make-zones.py save_dir
-    fred_to_zone.py [-j N] *.fred save_dir
+    fred_to_zone.py [-j N] save_dir *.fred
     zone_to_rects.py [-j N] *.fredbin
     fix_zone_overlaps.py [-j N] save_dir
+    flag_bad_data.py [-j N] bad_night_file bad_field_file *-continer.fredbin
     rect_to_dat {apass|sro} [-j N] *-container.fredbin
     
 Where `save_dir` is a save directory where all pipeline output will be stored,
 `[...]` indicates optional arguments, and `{...}` indicates required
-command-line switches.
+command-line switches. If an error is encountered, all pipeline stages will 
+emit an error message on the console and indicate the error in a 
+`error_*` file in the `save_dir`. For example, errors incountered during
+`fred_to_zone` will be stored in the `save_dir/error_fred_to_zone.txt` file.
 
 Given the quantity of data involved in the APASS survey, it is recommended that
 you run the pipeline within a GNU `screen` session. See `man screen` for usage
@@ -82,8 +87,8 @@ to contents found in the output directories.
 For the purposes of this sample, the following directories are used:
 
     APASS Code:           ~/workspace/apass/python 
-    FRED directory:       /home/data/sro-test-data
-    APASS save directory: /home/data/sro-test
+    FRED directory:       /home/data/apass-test-data
+    APASS save directory: /home/data/apass-test
     
 Create zones using `make_zones.py`
 
@@ -98,7 +103,7 @@ This will result in a `global.json` file in the APASS save directory:
 Next we parse each FRED file and split the data into different zones. To run
 this process, we use the `fred_to_zone.py` script with `.fred` files as input:
 
-    ~/workspace/apass/python$ python fred_to_zone.py -j 8 /home/data/sro-test-data/*.fred
+    ~/workspace/apass/python$ python fred_to_zone.py -j 8 /home/data/apass-test/ /home/data/sro-test-data/*.fred
     Processing FRED file /home/data/sro-test-data/141111.fred
     Processing FRED file /home/data/sro-test-data/141127.fred
     Processing FRED file /home/data/sro-test-data/141024.fred

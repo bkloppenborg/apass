@@ -285,7 +285,7 @@ def main():
     save_dir = os.path.dirname(os.path.realpath(args.input[0]))
 
     # configure globals
-    error_filename = save_dir + "error_zone_to_rects.txt"
+    error_filename = save_dir + "/error_zone_to_rects.txt"
     tree_file = save_dir + "/global.json"
 
     # Construct a partial to serve as the function to call in serial or

@@ -15,7 +15,7 @@ from quadtree import QuadTreeNode
 from quadtree_types import *
 from apass_types import *
 from border_info import load_border_info, save_border_info
-from fred import read_fredbin
+import fred
 
 def load_zone_data(tree, save_dir):
     """Restores zone data from the specified save_dir to the tree."""
@@ -39,7 +39,7 @@ def load_zone_data(tree, save_dir):
     # load the data
     zone_id  = leaves[0].zone_id
     filename = save_dir + '/' + apass.name_zone_container_file(zone_id)
-    data     = read_fredbin(filename)
+    data     = fred.read_fredbin(filename)
 
     # insert the data *directly* into the container, bipassing normal
     # restoration methods.
@@ -56,10 +56,21 @@ def save_zone_data(tree, directory):
     zone_id = leaves[0].zone_id
     filename = directory + '/' + apass.name_zone_container_file(zone_id)
 
-    # save the rectangle data to file, overwriting the contents
-    with open(filename, 'w+b') as data_file:
-        for leaf in leaves:
-            leaf.save_data(data_file)
+    # Extract the data from the tree
+    data = []
+    for leaf in leaves:
+        # leaf is a RectTree instance
+        for container in leaf.containers:
+            # container is a RectContainer instance
+            temp = container.get_data()
+            container.clear_data()
+
+            data.extend(temp)
+
+    # convert the data to a fredbin and write to file
+    data = fred.to_fredbin(data)
+    with open(filename, 'wb') as outfile:
+        fred.write_fredbin(outfile, data)
 
 def load_zone(save_dir, zone_id):
     """Loads the tree, data, and border info file for the specified zone.
