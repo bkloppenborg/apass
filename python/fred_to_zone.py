@@ -23,7 +23,7 @@ from apass import name_zone_file, name_zone_contrib_file, name_zone_file
 from apass import get_coords, get_num_zones
 
 # File I/O
-from fred import read_fred, read_fredbin, compare_fred_data
+from fred import read_fred, read_fredbin, compare_fred_data, write_fredbin
 
 import sys, os
 sys.path.append(os.path.join(sys.path[0],'modules', 'FileLock', 'filelock'))
@@ -72,12 +72,6 @@ def build_data_dict(filename):
         print("ERROR: File %s has an unknown error and was not parsed" % (filename))
         flag_read_error = True
 
-    # skip empty files
-    if data is None:
-        return None
-    if len(data) == 0:
-        return None
-
     if flag_read_error:
         with FileLock(error_filename, timeout=100, delay=0.05):
             with open(error_filename, 'a') as error_file:
@@ -85,6 +79,12 @@ def build_data_dict(filename):
                 error_file.write(message)
                 print message
 
+        return None
+
+    # skip empty files
+    if data is None:
+        return None
+    if len(data) == 0:
         return None
 
     # update the number of data points read.
@@ -176,8 +176,7 @@ def add_fred(save_dir, filename):
 
         with FileLock(zone_filename, timeout=100, delay=0.05):
             with open(zone_filename, 'a+b') as outfile:
-                for datum in data:
-                    outfile.write(datum)
+                write_fredbin(outfile, data)
 
             with open(contrib_filename, 'a+') as outfile:
                 outfile.write(filename + "\n")
@@ -263,8 +262,10 @@ def fred_to_zone(proc_func, save_dir, filename):
 
     global error_filename
 
+    output = None
+
     try:
-        proc_func(save_dir, filename)
+        output = proc_func(save_dir, filename)
     except:
         message = "ERROR: Failed to import %s. Re-run in debug mode\n" % (filename)
         tb = traceback.format_exc()
@@ -274,14 +275,16 @@ def fred_to_zone(proc_func, save_dir, filename):
             with open(error_filename, 'a') as error_file:
                 error_file.write(message + "\n" + str(tb) + "\n")
 
+    return output
+
 def main():
 
     global error_filename
     global tree_file
 
     parser = argparse.ArgumentParser(description='Parses .fred files into zone .fredbin files')
-    parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
     parser.add_argument('save_dir', help="Directory to save the output files.")
+    parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
@@ -293,7 +296,7 @@ def main():
     start = time.time()
 
     # load globals
-    error_filename = args.save_dir + "/fred_to_zone.errorlog"
+    error_filename = args.save_dir + "/error_fred_to_zone.txt"
     tree_file = args.save_dir + "/global.json"
 
     # truncate the error log file

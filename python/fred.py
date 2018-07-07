@@ -179,10 +179,10 @@ def read_fredbin(filename):
     #
     #return data
 
-def write_fredbin(filename, data):
+def write_fredbin(filename_or_handle, data):
     """Writes a APASS-formatted numpy array, data, to the specified file."""
 
-    data.dump(filename)
+    np.save(filename_or_handle, data)
 
 def to_fredbin(list_data):
 
