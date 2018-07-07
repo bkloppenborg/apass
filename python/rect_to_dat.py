@@ -294,7 +294,7 @@ def average_container(container, filter_config):
         mag_sig = 99.999
 
         # Only produces results if there is at least one non-zero weight:
-        if (t_data['weight'] > 0):
+        if np.any(t_data['weight'] > 0):
 
             # magnitude and its uncertainty
             mag = average(t_data['xmag1'], weights=t_data['weight'])

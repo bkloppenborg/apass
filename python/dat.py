@@ -134,7 +134,7 @@ def read_dat(filename, dat_type="apass"):
     data['container_area']   /= (3600 * 3600)
 
     # remove the cos(dec) correction
-    data['ra_sig'] *= cos(data['dec'])
+    data['ra_sig'] *= np.cos(data['dec'])
 
     return data
 
@@ -155,7 +155,7 @@ def write_dat(filename, data, dat_type="apass"):
     data['ra'] %= 360.0
 
     # correct ra_sig by cos(dec)
-    data['ra_sig'] /= cos(data['dec'])
+    data['ra_sig'] /= np.cos(data['dec'])
 
     # compose a header
     header =  "APASS .dat file output. Format is as follows: \n"
