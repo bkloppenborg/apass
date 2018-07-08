@@ -4,6 +4,7 @@
 # Purpose: Functions that enable read/write operations or other interactions on .dat files.
 
 import numpy as np
+from math import pi
 
 valid_formats = ['apass', 'sro']
 
@@ -134,7 +135,8 @@ def read_dat(filename, dat_type="apass"):
     data['container_area']   /= (3600 * 3600)
 
     # remove the cos(dec) correction
-    data['ra_sig'] *= np.cos(data['dec'])
+    dec_rad = data['dec'] * pi / 180
+    data['ra_sig'] *= np.cos(dec_rad)
 
     return data
 
@@ -155,7 +157,8 @@ def write_dat(filename, data, dat_type="apass"):
     data['ra'] %= 360.0
 
     # correct ra_sig by cos(dec)
-    data['ra_sig'] /= np.cos(data['dec'])
+    dec_rad = data['dec'] * pi / 180
+    data['ra_sig'] /= np.cos(dec_rad)
 
     # compose a header
     header =  "APASS .dat file output. Format is as follows: \n"
