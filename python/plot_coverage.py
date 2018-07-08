@@ -1,62 +1,83 @@
 #!/bin/python
 
+# system includes
 import argparse
-import numpy as np
-from multiprocessing import Pool
-
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
-import apass
-from apass_types import *
-from quadtree import *
-from quadtree_types import *
 import glob
 import sys
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import matplotlib.patches as patches
 
-# temporary for testing
-import random
+# project includes
+import dat
+from quadtree import QuadTreeNode, Rect
+
+# file-specific globals
+bounds_names   = ['ra', 'dec', 'ra_min', 'ra_max', 'dec_min', 'dec_max']
+bounds_types   = ['float64'] * len(bounds_names)
+num_phot_names = ['num_obs_'   + s for s in dat.apass_phot_names]
+num_phot_types = ['int32'] * len(num_phot_names)
+num_star_names = ['num_stars_' + s for s in dat.apass_phot_names]
+num_star_types = ['int32'] * len(num_star_names)
+col_names = bounds_names + num_phot_names + num_star_names
+col_types = bounds_types + num_phot_types + num_star_types
+
+class SummaryLeaf(QuadTreeNode):
+
+    def __init__(self, rect, depth, parent=None):
+        QuadTreeNode.__init__(self, rect, depth, parent)
+
+        # create a structured numpy array that will store the data.
+        temp = np.zeros(len(col_names))
+        dtype={'names': col_names, 'formats':col_types}
+        self.data = np.asarray(temp, dtype=dtype)
+
+    def insert(self, x, y, datum):
+
+        for filter_name in dat.apass_phot_names:
+
+            # construct the names of the columns we might populate
+            num_obs_col    = 'num_obs_' + filter_name
+            star_count_col = 'num_stars_' + filter_name
+
+            # determine the number of observations in this filter
+            num_obs = datum[num_obs_col]
+
+            # if the number of observations is non-zero, add the results
+            if num_obs > 0:
+                self.data[num_obs_col] += num_obs
+                self.data[star_count_col] += 1
+
+    def get_data(self):
+
+        data = self.data
+        data['ra_min']  = self.rect.x_min
+        data['ra_max']  = self.rect.x_max
+        data['dec_min'] = self.rect.y_min
+        data['dec_max'] = self.rect.y_max
+        data['ra']      = (self.rect.x_max + self.rect.x_min) / 2
+        data['dec']     = (self.rect.y_max + self.rect.y_min) / 2
+
+        return self.data
+
+def discrete_cmap(N, base_cmap=None):
+    """Create an N-bin discrete colormap from the specified input map"""
+
+    # Note that if base_cmap is a string or None, you can simply do
+    #    return plt.cm.get_cmap(base_cmap, N)
+    # The following works for string, None, or a colormap instance:
+
+    base = plt.cm.get_cmap(base_cmap)
+    color_list = base(np.linspace(0, 1, N))
+    cmap_name = base.name + str(N)
+    return base.from_list(cmap_name, color_list, N)
 
 def coords_to_pixel(ra, dec, width, height):
     x = int(ra / 360 * width)
     y = int(-dec / 180 * height) + height / 2
 
     return [x,y]
-
-def zone_measurement_stats(zone_file):
-
-    print("Processing zone file %s" % (zone_file) )
-    zone_tree = QuadTreeNode.from_file(zone_file, leafClass=RectLeaf)
-
-    # compute the (x,y) location of the top-level node in the plot
-    rect = zone_tree.rect
-    ra = (rect.x_max + rect.x_min) / 2
-    dec = (rect.y_max + rect.y_min) / 2
-
-    # determine the min/ave/max measurements.
-    num_containers = 0
-    min_measurements = sys.maxint
-    ave_measurements = 0
-    max_measurements = 0
-    leaves = zone_tree.get_leaves()
-    for leaf in leaves:
-        for container in leaf.containers:
-            num_data = container.num_data
-
-            if(num_data < min_measurements):
-                min_measurements = num_data
-            elif(num_data > max_measurements):
-                max_measurements = num_data
-
-            ave_measurements += num_data
-            num_containers += 1
-
-    # compute the average
-    if(num_containers > 0):
-        ave_measurements = ave_measurements / num_containers
-
-    return [ra, dec, min_measurements, ave_measurements, max_measurements]
-
 
 def main():
     """Creates a coverage map which shows the number of observations in each
@@ -65,77 +86,84 @@ def main():
     # the coverage map is (internally) represented as a (square) Numpy NDArray
     # whose dimensions are defined by the number of times the sphere is sudivided.
 
+    max_obs = 10 # a threshold value
+
     parser = argparse.ArgumentParser(description='Produces a coverage map with data from all zones')
-    parser.add_argument('-j', '--jobs', type=int, help="Parallel Jobs", default=4)
-    parser.add_argument('--debug', default=False, action='store_true',
-                        help="Run in debug mode")
+    parser.add_argument('save_dir', type=str, help="Directory in which results (dats) are saved.")
     args = parser.parse_args()
 
-    num_splits = apass.global_depth
+    # collect all of the dat files.
+    filenames = glob.glob((args.save_dir + "/z*.dat"))
+    filenames = sorted(filenames)
+    if len(filenames) == 0:
+        print("No DAT files found in %s" % (args.save_dir))
 
-    width = 2**num_splits
+    # build a tree that summarizes the properties of stars in its node
+    depth = 7
+    bounds = Rect(0, 360, -90, 90)
+    tree = QuadTreeNode(bounds, 0)
+    tree.split_until(depth, leafClass=SummaryLeaf)
+
+    # determine the size of the image we will generate
+    width  = 2**depth
     height = width
-    print("Image size: %i %i" % (width, height))
 
-    # compute statistics in parallel
-    zone_files = glob.glob(apass.apass_save_dir + "/*-zone.json")
-    results = []
-    if args.debug:
-        for filename in zone_files:
-            results.append(zone_measurement_stats(filename))
-    else:
-        # generate a pool of threads to process the input
-        pool = Pool(args.jobs)
+    # read in the datfile entries to the tree
+    for filename in filenames:
+        dat_data = dat.read_dat(filename)
+        print("Read %s which has %i stars" % (filename, len(dat_data)))
 
-        # farm out the work
-        results = pool.imap(zone_measurement_stats, zone_files)
-        pool.close()
-        pool.join()
+        for datum in dat_data:
+            x = datum['ra']
+            y = datum['dec']
+            tree.insert(x,y, datum)
 
+    # Extract the data from the leaves
+    leaves = tree.get_leaves()
+    data = [leaf.get_data() for leaf in leaves]
+    data = np.concatenate(data, axis=0)
 
-    # we will generate three images showing the min, average, and maximum
-    # number of measurements.
-    min_image = np.zeros((width, height), dtype=float)
-    ave_image = np.zeros((width, height), dtype=float)
-    max_image = np.zeros((width, height), dtype=float)
+    # create a distinct number of colors for plotting
+    color_map = discrete_cmap(max_obs, 'gnuplot')
 
-    # Iterate over the zone files computing the min, ave, and max number of
-    # measurements
-    for result in results:
-        # unpack the result
-        [ra, dec, min_measurements, ave_measurements, max_measurements] = result
+    filter_names = dat.apass_phot_names
+    for filter_name in filter_names:
 
-        [x,y] = coords_to_pixel(ra, dec, width, height)
-        #print("center: %3.4f %3.4f -> %i %i" % (ra, dec, x, y))
+        # set up the image
+        image = np.zeros((width, height), dtype=float)
 
-        # update the image
-        min_image[y,x] = min_measurements
-        ave_image[y,x] = ave_measurements
-        max_image[y,x] = max_measurements
+        # determine the filter and star columns
+        filter_col = 'num_obs_' + filter_name
+        stars_col  = 'num_stars_' + filter_name
 
+        # extract the average number of observations for each pixel
+        for datum in data:
+            ra = datum['ra']
+            dec = datum['dec']
+            num_obs = datum[filter_col]
+            num_stars = datum[stars_col]
 
-    vmin = min(min_image.min(), max_image.min())
-    vmax = max(min_image.max(), max_image.max())
+            ave_obs = 0
+            if(num_obs > 0):
+                ave_obs = float(num_obs) / num_stars
 
-    fig = plt.figure(figsize=(9,9))
-    gs = gridspec.GridSpec(3, 1)
-    min_ax = plt.subplot(gs[0, 0])
-    im = min_ax.imshow(min_image, extent=[0, 360, -90, 90])
-    min_ax.set_title("Minimum number of measurements")
-    plt.colorbar(im)
+            if ave_obs > 10:
+                ave_obs = 10
 
-    ave_ax = plt.subplot(gs[1, 0], sharex=min_ax, sharey=min_ax)
-    im = ave_ax.imshow(ave_image, extent=[0, 360, -90, 90], vmin=0, vmax=50)
-    ave_ax.set_title("Average number of measurements")
-    plt.colorbar(im)
+            [x,y] = coords_to_pixel(ra, dec, width, height)
 
-    max_ax = plt.subplot(gs[2, 0], sharex=min_ax, sharey=min_ax)
-    im = max_ax.imshow(max_image, extent=[0, 360, -90, 90], vmin=0, vmax=100)
-    max_ax.set_title("Maximum number of measurements")
-    plt.colorbar(im)
+            image[y,x] = ave_obs
 
-    plt.tight_layout()
-    plt.show()
+        # configure the plot
+        fig = plt.figure(figsize=(18,9))
+        im = plt.imshow(image, extent=[0, 360, -90, 90])
+        plt.colorbar(im)
+
+        #axes.set_ylim([-90, 90])
+        #axes.set_xlim([0, 360])
+
+        plt.title("APASS %s coverage" % (filter_name))
+        plt.savefig("apass_" + filter_name + ".png")
 
 
 if __name__ == "__main__":
