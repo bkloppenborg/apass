@@ -88,7 +88,7 @@ def zone_from_name(filename):
 
 def name_zone_file(zone_id):
     """Produce a name from a zone file given a zone ID"""
-    return name_zone(zone_id) + ".fredbin"
+    return name_zone(zone_id) + "-raw.fredbin"
 
 def name_zone_container_file(zone_id):
     """Produces the name for a zone's container given a zone ID"""
