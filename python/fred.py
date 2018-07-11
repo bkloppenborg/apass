@@ -192,7 +192,7 @@ def read_fredbin(filename):
 
 def write_fredbin(filename_or_handle, data):
     """Writes a APASS-formatted numpy array, data, to the specified file."""
-    np.save(filename_or_handle, data, allow_pickle=False)
+    np.save(filename_or_handle, data)
 
 def to_fredbin(list_data):
     """Converts a list nested list of fredbin values to a structured numpy array."""
