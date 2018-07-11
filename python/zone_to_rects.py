@@ -92,13 +92,14 @@ def zone_to_rects(save_dir, filename):
     #plot_rects(zone_tree) # plot the nodes after the merge
 
     # write out the containers that were on the border
-    filename = filename_no_ext + '-border-rects.json'
+    filename = save_dir + '/' + apass.name_zone_border_file(zone_id)
     save_border_info(filename, zone_border_info)
 
     zone.save_zone_data(zone_tree, save_dir)
 
     # save the zone -> container mapping
-    QuadTreeNode.to_file(zone_tree, filename_no_ext + "-zone.json")
+    filename = save_dir + '/' + apass.name_zone_json_file(zone_id)
+    QuadTreeNode.to_file(zone_tree, filename)
 
 def merge_containers_on_borders(zone_tree):
 
