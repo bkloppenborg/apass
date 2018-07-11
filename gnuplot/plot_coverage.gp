@@ -4,7 +4,7 @@ set term png size 14000,7000
 
 # configure the pallette
 set cbrange [0:10]
-set palette maxcolors 10
+set palette maxcolors 11
 
 # configure the plot
 set nokey

@@ -64,10 +64,6 @@ def main():
     # output globals
     parser = argparse.ArgumentParser(description='Dumps all data for a given star.')
     parser.add_argument('save_dir', help="Directory where save files can be found")
-    parser.add_argument('bad_night_file', type=str,
-                        help="File containing known bad nights")
-    parser.add_argument('bad_night_field_file', type=str,
-                        help="File containing known bad fields on specific nights")
     parser.add_argument('coords', nargs='+',
                         help="Coordinates in either a (x,y) pair, " + \
                         "or (zone_id, node_id, container_id) triplet")
@@ -90,8 +86,6 @@ def main():
     # configure the filters
     filter_config = filter_config_data()
     filter_config.load_apass_defaults()
-    filter_config.bad_night_filename       = args.bad_night_file
-    filter_config.bad_night_field_filename = args.bad_night_field_file
 
     # export the data
     zone_id, node_id, container_id = [None, None, None]
@@ -105,7 +99,6 @@ def main():
     elif num_coords == 3:
         zone_id, node_id, container_id = coords
         data = data_from_unique_id(save_dir, zone_id, node_id, container_id)
-
 
     # convert the fredbin to a freddat, apply filters, and compute weights
     # as would be performed in the rect_to_dat code.
