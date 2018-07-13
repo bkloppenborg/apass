@@ -22,9 +22,9 @@ fred_col_types  = ['float64',  'float64',  'float32', 'float32', 'bool',
                    'uint8',     'float32', 'float32', 'float32', 'int32',
                    'int32', 'float32']
 fredbin_col_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d',
-                   '%d',    '%02.6f',  '%02.6f',  '%6i',   '%6i',   '%11s',
-                   '%03i',      '%02.6f',  '%02.6f',  '%+02.6f', '%6i',
-                   '%6i',   '%06.2f']
+                   '%d',    '%12.6f',  '%02.6f',  '%6i',   '%6i',   '%11s',
+                   '%03i',  '%08.5f',  '%02.6f',  '%+02.6f', '%6i',
+                   '%6i',   '%05.1f']
 
 # fredbin follows the same format as fred, but also has columns for 'rect' and 'container'
 fredbin_col_names = copy(fred_col_names)
