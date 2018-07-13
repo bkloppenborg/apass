@@ -18,7 +18,7 @@ fred_col_names  = ['ra',       'dec',      'ccdx',    'ccdy',    'flag1',
                    'filter_id', 'xmag1',   'xerr1',   'dmag',    'sys',
                    'night', 'exposure_time']
 fred_col_types  = ['float64',  'float64',  'float32', 'float32', 'bool',
-                   'bool',  'float32', 'float32', 'int32', 'int32', 'S25',
+                   'bool',  'float64', 'float32', 'int32', 'int32', 'S25',
                    'uint8',     'float32', 'float32', 'float32', 'int32',
                    'int32', 'float32']
 fredbin_col_fmt = ['%+011.6f', '%+011.6f', '%011.6f', '%011.6f', '%d',
