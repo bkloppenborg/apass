@@ -187,74 +187,6 @@ def add_fred(save_dir, filename):
 
     return impacted_zones
 
-def remove_fred(save_dir, filename):
-    """Removes the data found in the specified file."""
-
-    print("Processing FRED file " + filename)
-    impacted_zones = []
-    data_dict = build_data_dict(filename)
-
-    # if there isn't any data, bail out early.
-    if data_dict is None:
-        return impacted_zones
-
-    # write the input data to zone mapping information to a file
-    write_mapping_info(save_dir, filename, data_dict, mode="remove")
-
-    # remove any data that is not for a zone
-    del data_dict['num_fred_data']
-
-    if data_dict is not None:
-        # Write out the data being sure to lock all related files prior to opening
-        for zone_id, data in data_dict.iteritems():
-
-            if len(data) == 0:
-                continue
-
-            # print out a message to inform the user of progress.
-            #print("Checking zone %i" % (zone_id))
-            data_removed = False
-
-            zone_filename    = save_dir + '/' + name_zone_file(zone_id)
-            contrib_filename = save_dir + '/' + name_zone_contrib_file(zone_id)
-
-            with FileLock(zone_filename):
-                try:
-                    zone_data = read_fredbin(zone_filename)
-                except:
-                    print("Warning, could not find zone %i" % (zone_id))
-                    continue
-
-                zone_data = np.sort(zone_data, order=['ra', 'dec'])
-                num_data = len(zone_data)
-
-                # find the indices of the corresponding data points
-                # ensure that the data match *exactly)
-                indices = []
-                for datum in data:
-                    index = np.searchsorted(zone_data, datum)
-                    if index >= num_data:
-                        continue
-
-                    same_point = compare_fred_data(datum, zone_data[index])
-                    if same_point:
-                        indices.append(index)
-                        data_removed = True
-
-                #print("Deleting %i entries from zone %i" % (len(indices), zone_id))
-                zone_data = np.delete(zone_data, indices)
-
-                # write the file
-                with open(zone_filename, 'w+b') as outfile:
-                    write_fredbin(zone_filename, zone_data)
-
-            if data_removed:
-                impacted_zones.append(zone_id)
-
-    print("Completed FRED file " + filename)
-
-    return impacted_zones
-
 def fred_to_zone(proc_func, save_dir, filename):
     """Wrapper function for adding/removing FRED files that includes exception
     handling and logging"""
@@ -287,7 +219,6 @@ def main():
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
                         help="Run in debug mode")
-    parser.add_argument('--remove', default=False, action='store_true')
     parser.set_defaults(jobs=1)
 
     # parse the command line arguments and start timing the script
@@ -320,8 +251,6 @@ def main():
     # Construct a partial to serve as the function to call in serial or
     # parallel mode below.
     fred_func = partial(fred_to_zone, add_fred, args.save_dir)
-    if args.remove:
-        fred_func = partial(fred_to_zone, remove_fred, args.save_dir)
 
     # set up the pool and launch the function
     results = []
