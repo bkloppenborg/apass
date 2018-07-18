@@ -246,6 +246,9 @@ def average_container(container, filter_config):
     # Compute the average RA and DEC using data from all measurements
     rect = container.rect
     output['field_id']         = data['field_id'][0]
+
+    # ensure RA is in the [0,360] range
+    data['ra'] %= 360.0
     output['ra']               = average(data['ra'])
     output['ra_sig']           = std(data['ra'])
     output['dec']              = average(data['dec'])
