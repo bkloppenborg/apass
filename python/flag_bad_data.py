@@ -26,16 +26,17 @@ def flag_bad_data(bad_night_file, bad_field_file, filename):
         print("Processing %s" % (filename))
 
         # read in the bad night/field files
-        bad_nights = badfiles.read_bad_nights(bad_night_file)
+        bad_night_names = badfiles.read_bad_nights(bad_night_file)
         bad_fields = badfiles.read_bad_night_fields(bad_field_file)
 
         # read in the data and sort it by night
         data = fred.read_fredbin(filename)
-        data = np.sort(data, order='night')
 
         # Any given filter should ONLY set 'use_data' flags to False to avoid
         # impacting other filters.
-        data = filter_bad_nights(data, bad_nights)
+        data = np.sort(data, order='night_name')
+        data = filter_bad_nights(data, bad_night_names)
+        data = np.sort(data, order='night')
         data = filter_bad_night_fields(data, bad_fields)
         data = filter_non_photometric_nights(data)
 
@@ -43,7 +44,8 @@ def flag_bad_data(bad_night_file, bad_field_file, filename):
         data = np.sort(data, order=['zone_id', 'node_id', 'container_id'])
 
         # write the data
-        fred.write_fredbin(filename, data)
+        outfile = open(filename, 'w')
+        fred.write_fredbin(outfile, data)
 
     except:
         message = "ERROR: Failed to flag %s. Re-run in debug mode\n" % (filename)
@@ -65,7 +67,7 @@ def filter_non_photometric_nights(data):
     return data
 
 
-def filter_bad_nights(data, bad_nights):
+def filter_bad_nights(data, bad_night_names):
     """Sets the 'use_data' flag to False for nights that are identified as
     bad nights.
     Input:
@@ -77,20 +79,17 @@ def filter_bad_nights(data, bad_nights):
     """
 
     # iterate over the bad night entries, flagging data as required
-    for i in range(0, len(bad_nights)):
+    for i in range(0, len(bad_night_names)):
         # extract the bad (numeric) night and corresponding night name
-        night = bad_nights['night'][i]       # integer
-        name  = bad_nights['night_name'][i]  # string
+        night_name  = bad_night_names['night_name'][i]  # string
 
         # find upper and lower bounds for the night
-        l = np.searchsorted(data['night'], night, side='left')
-        u = np.searchsorted(data['night'], night, side='right')
+        l = np.searchsorted(data['night_name'], night_name, side='left')
+        u = np.searchsorted(data['night_name'], night_name, side='right')
 
         # iterate over each candidate and flag if the night name
-        # is a precise match.
         for j in range(l, u):
-            if data['night_name'] == night_name:
-                data['use_data'][j] = False
+            data['use_data'][j] = False
 
     return data
 
