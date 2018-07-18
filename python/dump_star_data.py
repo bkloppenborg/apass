@@ -93,12 +93,18 @@ def main():
     if num_coords == 2:
         x,y = coords
         data = data_from_coordinate_pair(save_dir, x, y)
+        if data is None:
+            print("Could not locate star.")
+            quit()
         zone_id      = data['zone_id'][0]
         node_id      = data['node_id'][0]
         container_id = data['container_id'][0]
     elif num_coords == 3:
         zone_id, node_id, container_id = coords
         data = data_from_unique_id(save_dir, zone_id, node_id, container_id)
+        if data is None:
+            print("Could not locate star.")
+            quit()
 
     # convert the fredbin to a freddat, apply filters, and compute weights
     # as would be performed in the rect_to_dat code.
