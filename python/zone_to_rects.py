@@ -273,7 +273,8 @@ def main():
     global error_filename
     global tree_file
 
-    parser = argparse.ArgumentParser(description='Merges .fred photometric files')
+    parser = argparse.ArgumentParser(description='Inserts zone data into a quadtree data structure.')
+    parser.add_argument('save_dir', help="Directory to which output files should be saved")
     parser.add_argument('input', nargs='+', help="Input files which will be split into zonefiles")
     parser.add_argument('-j','--jobs', type=int, help="Parallel jobs", default=4)
     parser.add_argument('--debug', default=False, action='store_true',
@@ -283,7 +284,7 @@ def main():
     args = parser.parse_args()
     start = time.time()
 
-    save_dir = os.path.dirname(os.path.realpath(args.input[0]))
+    save_dir = os.path.dirname(os.path.realpath(args.save_dir))
 
     # configure globals
     error_filename = save_dir + "/error_zone_to_rects.txt"
