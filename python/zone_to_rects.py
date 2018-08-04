@@ -284,7 +284,7 @@ def main():
     args = parser.parse_args()
     start = time.time()
 
-    save_dir = os.path.dirname(os.path.realpath(args.save_dir))
+    save_dir = os.path.dirname(args.save_dir)
 
     # configure globals
     error_filename = save_dir + "/error_zone_to_rects.txt"
