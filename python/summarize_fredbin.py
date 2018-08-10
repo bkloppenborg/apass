@@ -25,6 +25,9 @@ def print_summary(s):
 
 def summarize_fred(filename):
     """Reads in a fredbin file, prints out some basic statistics"""
+
+    print("Processing %s" % (filename))
+
     output = init_summary_dict(filename)
 
     data = None
