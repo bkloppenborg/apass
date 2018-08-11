@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import argparse
-import numpy
+import numpy as np
 import multiprocessing as mp
 from functools import partial
 
@@ -12,16 +12,10 @@ def init_summary_dict(filename):
 
     output = dict()
     output['filename'] = filename
-    output['entries'] = 0
+    output['entries']  = 0
+    output['nights']   = dict()
 
     return output
-
-def print_summary(s):
-
-    filename = s['filename']
-    entries  = s['entries']
-
-    print("%s %i" % (filename, entries))
 
 def summarize_fred(filename):
     """Reads in a fredbin file, prints out some basic statistics"""
@@ -41,9 +35,54 @@ def summarize_fred(filename):
         return output
 
     # populate the dictionary with useful information
+    data = np.sort(data, order='night_name')
     output['entries'] = len(data)
 
+    # find the unique named nights in the data
+    night_names = list(set(data['night_name']))
+    for night_name in night_names:
+
+        # find the upper and lower bounds for the night
+        l = np.searchsorted(data['night_name'], night_name, side='left')
+        r = np.searchsorted(data['night_name'], night_name, side='right')
+
+        output['nights'][night_name] = r - l
+
     return output
+
+def save_night_summary(filename, data):
+
+    # extract the night information from the results
+    night_data = dict()
+
+    for d in data:
+        temp = d['nights']
+        keys = temp.keys()
+
+        for k in keys:
+            if k in night_data.keys():
+                night_data[k] += temp[k]
+            else:
+                night_data[k]  = temp[k]
+
+    # write the results to a file
+    with open(filename, 'w') as outfile:
+        keys = night_data.keys()
+
+        for k in keys:
+            k_value = str(night_data[k])
+            outfile.write(k + " " + k_value + "\n")
+
+
+def save_zone_summary(filename, data):
+
+    with open(filename, 'w') as outfile:
+        for d in data:
+            filename = d['filename']
+            entries  = d['entries']
+
+            outfile.write(filename + " " + str(entries) + "\n")
+
 
 def main():
 
@@ -75,9 +114,8 @@ def main():
         for r in pool_result:
             results.append(r)
 
-    # print the result to console
-    for r in results:
-        print_summary(r)
+    save_night_summary('night_summary.txt', results)
+    save_zone_summary('zone_summary.txt', results)
 
 if __name__ == "__main__":
     main()
