@@ -256,7 +256,8 @@ def average_container(container, filter_config):
     output['zone_id']          = data['zone_id'][0]
     output['node_id']          = data['node_id'][0]
     output['container_id']     = data['container_id'][0]
-    output['container_width']  = float(rect.x_max - rect.x_min)
+
+    output['container_width']  = float(rect.x_max - rect.x_min) % 360.0
     output['container_height'] = float(rect.y_max - rect.y_min)
     output['container_area']   = output['container_width'] * output['container_height']
 
