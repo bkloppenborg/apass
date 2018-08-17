@@ -11,13 +11,13 @@ valid_formats = ['apass', 'sro']
 # data format for output data.
 std_dat_names = ['field_id', 'ra', 'ra_sig', 'dec', 'dec_sig',
                  'zone_id', 'node_id', 'container_id',
-                 'container_width', 'container_height', 'container_area']
+                 'container_width', 'container_height', 'container_area', 'good_obs']
 std_dat_types = ['S25', 'float64', 'float64', 'float64', 'float64',
                  'int32', 'int32', 'int32',
-                 'float32', 'float32', 'float32']
+                 'float32', 'float32', 'float32', 'bool']
 std_dat_fmt   = ["%25s", "%11.6f", "%9.3f", "%11.6f", "%9.3f",
                  "%5i", "%5i", "%5i",
-                 '%10.3f', '%10.3f', '%10.3f']
+                 '%10.3f', '%10.3f', '%10.3f', "%1i"]
 
 # forma+33t information specific to the APASS data
 apass_phot_names   = ['B', 'V', 'su', 'sg', 'sr', 'si', 'sz', 'Ha', 'ZS', 'Y']
@@ -166,6 +166,10 @@ def write_dat(filename, data, dat_type="apass"):
     header += "Column types: " + ','.join(dat_col_types) + "\n"
     header += "Column formats: " + ','.join(dat_col_fmt) + "\n"
 
+    # only print observations with good observations
+    indices = np.where((data['good_obs'] == True))
+    data = data[indices]
+
     # save to text
     np.savetxt(filename, data, fmt=dat_col_fmt, header=header)
 
@@ -205,7 +209,11 @@ def dicts_to_ndarray(dicts, dat_type="apass"):
 def make_dat_dict(dat_type="apass"):
     """Makes a dat-friendly dictionary of the specified dat type."""
     dat_col_names, dat_col_types, dat_col_fmt = select_format(dat_type)
-    return dict.fromkeys(dat_col_names)
+
+    output = dict.fromkeys(dat_col_names)
+    output['good_obs'] = False
+
+    return output
 
 def fill_none_values(a_dict, keys, value):
     """Fills the keys of a_dict with the specified value"""
