@@ -17,7 +17,7 @@ def init_summary_dict(filename):
 
     return output
 
-def summarize_fred(filename):
+def summarize_fredbin(filename):
     """Reads in a fredbin file, prints out some basic statistics"""
 
     print("Processing %s" % (filename))
@@ -96,7 +96,7 @@ def main():
     # parse the command line arguments and start timing the script
     args = parser.parse_args()
 
-    run_func = partial(summarize_fred)
+    run_func = partial(summarize_fredbin)
 
     results = []
     if args.debug:
