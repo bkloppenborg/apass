@@ -57,6 +57,13 @@ def filter_id_from_name(filter_name):
 
     return filter_id
 
+def filter_name_from_id(filter_id):
+    """Returns the name associated with a given filter name"""
+    idx = filter_ids.index(filter_id)
+    filter_name = filter_names[idx]
+
+    return filter_name
+
 def get_coords_raw(ra, dec):
     """Returns (ra', dec') = (ra*cos(dec), dec)"""
     ra_  = ra * cos(dec * pi / 180)

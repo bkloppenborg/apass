@@ -272,6 +272,11 @@ def average_container(container, filter_config):
     # compute the photometric weights
     data = compute_weights(data)
 
+    # If any of the observations have non-zero weights, we should get
+    # some output. Indicate this output will contain good observations.
+    if np.any(data['weight'] > 0):
+        output['good_obs'] = True
+
     # get a list of filters in numerical order
     # NOTE: It is possible that the data contain filters not specified in
     # the standard set of filter IDs. We skip these cases below
@@ -297,7 +302,6 @@ def average_container(container, filter_config):
 
         # Only produces results if there is at least one non-zero weight:
         if np.any(t_data['weight'] > 0):
-            output['good_obs'] = True
 
             # magnitude and its uncertainty
             mag = average(t_data['xmag1'], weights=t_data['weight'])
