@@ -137,15 +137,17 @@ def lookup_field_centers(field_id, field_centers):
     """Finds the matching field center in a SORTED numpy structured array
     containing the field center data."""
 
+    num_fields = len(field_centers)
+
     # find the matching field. This should be unique.
     idx = np.searchsorted(field_centers['field_id'], field_id)
 
-    if field_centers['field_id'][idx] == field_id:
+    ra  = 0.0
+    dec = 0.0
+
+    if idx < num_fields and field_centers['field_id'][idx] == field_id:
         ra  = field_centers[idx]['ra']
         dec = field_centers[idx]['dec']
-    else:
-        ra  = 0.0
-        dec = 0.0
 
     return ra, dec
 
