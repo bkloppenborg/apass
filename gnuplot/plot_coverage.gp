@@ -3,16 +3,19 @@ filelist=system("ls *.dat")
 set term png size 14000,7000
 
 # configure the pallette
-set cbrange [0:10]
-set palette maxcolors 11
+set cbrange [0:4]
+set palette maxcolors 4
+set palette defined (0 "red", 1 "red", 2 "orange", 3 "green", 4 "purple")
 
 # configure the plot
 set nokey
 set grid
 set format x "%3.0f"
 set format y "%3.0f"
-set xtics -2,2,362 font ",20"
-set ytics -91,2,91 font ",20"
+set xtics  border mirror -2,2,362 font ",20"
+set x2tics border mirror -2,2,362 font ",20"
+set ytics  border mirror -91,2,91 font ",20"
+set y2tics border mirror -91,2,91 font ",20"
 
 set title "APASS B Coverage Map"
 set output 'apass_B.png'
