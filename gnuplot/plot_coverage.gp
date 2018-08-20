@@ -16,8 +16,8 @@ set xtics  border mirror -2,2,362 font ",20"
 set x2tics border mirror -2,2,362 font ",20"
 set ytics  border mirror -91,2,91 font ",20"
 set y2tics border mirror -91,2,91 font ",20"
-set xrange 0:360
-set yrange -90:90
+set xrange [0:360]
+set yrange [-90:90]
 
 set title "APASS B Coverage Map"
 set output 'apass_B.png'
