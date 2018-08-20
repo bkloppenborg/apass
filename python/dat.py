@@ -25,10 +25,10 @@ apass_filter_ids   = [2, 3, 7, 8, 9, 10, 11, 12, 13, 14]
 apass_num_phot     = len(apass_phot_names)
 apass_obs_names    = ['num_obs_' + s for s in apass_phot_names]
 apass_obs_types    = ['int32'] * apass_num_phot
-apass_obs_fmt      = ['%4i'] * apass_num_phot
+apass_obs_fmt      = ['%5i'] * apass_num_phot
 apass_nights_names = ['num_nights_' + s for s in apass_phot_names]
 apass_nights_types = ['int32'] * apass_num_phot
-apass_nights_fmt   = ['%4i'] * apass_num_phot
+apass_nights_fmt   = ['%5i'] * apass_num_phot
 apass_phot_types   = ['float32'] * apass_num_phot
 apass_phot_fmt     = ['%06.3f'] * apass_num_phot
 apass_err_names    = [s + "_sig" for s in apass_phot_names]
@@ -40,11 +40,11 @@ sro_num_phot     = 5
 sro_obs_names    = ['num_obs_B', 'num_obs_V', 'num_obs_sg',
                     'num_obs_sr', 'num_obs_si']
 sro_obs_types    = ['int32'] * sro_num_phot
-sro_obs_fmt      = ['%4i'] * sro_num_phot
+sro_obs_fmt      = ['%5i'] * sro_num_phot
 sro_nights_names = ['num_nights_B', 'num_nights_V', 'num_nights_sg',
                     'num_nights_sr', 'num_nights_si']
 sro_nights_types = ['int32'] * sro_num_phot
-sro_nights_fmt   = ['%4i'] * sro_num_phot
+sro_nights_fmt   = ['%5i'] * sro_num_phot
 sro_phot_names   = ['B', 'V', 'sg', 'sr', 'si']
 sro_filter_ids   = [2, 3, 8, 9, 10]
 sro_phot_types   = ['float32'] * sro_num_phot
