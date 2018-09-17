@@ -8,7 +8,7 @@ import glob
 import numpy as np
 import time
 import itertools
-import networkx as nx
+#import networkx as nx
 from math import sqrt
 import traceback
 
@@ -274,7 +274,7 @@ def average_container(container, filter_config):
 
     # If any of the observations have non-zero weights, we should get
     # some output. Indicate this output will contain good observations.
-    if np.any(data['weight'] > 0):
+    if np.any((data['use_data']) & (data['weight'] > 0)):
         output['good_obs'] = True
 
     # get a list of filters in numerical order
